@@ -8,9 +8,9 @@
       v-for="item in navItems"
       :key="item.key"
       class="nav-item"
-      :class="{ 'is-active': activeKey === item.key }"
+      :class="{ 'is-active': route.path === item.to }"
       type="button"
-      @click="activeKey = item.key"
+      @click="handleNavClick(item.to)"
     >
       <span class="nav-icon-pill">
         <span
@@ -25,10 +25,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
-const navItems = [{ key: 'disk-cleanup', label: '磁盘清理', icon: '/DiskCleanup.svg' }]
-const activeKey = ref(navItems[0].key)
+const router = useRouter()
+const route = useRoute()
+
+const navItems = [
+  { key: 'disk-cleanup', label: '磁盘清理', icon: '/DiskCleanup.svg', to: '/' },
+  { key: 'settings', label: '设置', icon: '/Settings.svg', to: '/settings' },
+]
+
+function handleNavClick(path: string) {
+  router.push(path)
+}
 </script>
 
 <style scoped>
@@ -65,22 +74,36 @@ const activeKey = ref(navItems[0].key)
   padding: 0.75rem 0.25rem;
   color: #7f8a89;
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition: color 0.25s ease;
 }
 
 .nav-icon-pill {
   width: 2.6rem;
   height: 1.75rem;
   border-radius: 999px;
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s ease;
+  transition: transform 0.25s ease;
+}
+
+.nav-icon-pill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #f3fbf6 0%, #dff3e7 100%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
 }
 
 .nav-icon {
   width: 1.125rem;
   height: 1.125rem;
+  position: relative;
+  z-index: 1;
 }
 
 .nav-icon-mask {
@@ -107,7 +130,11 @@ const activeKey = ref(navItems[0].key)
 }
 
 .nav-item.is-active .nav-icon-pill {
-  background: #eaf7ef;
+  transform: translateY(-1px);
+}
+
+.nav-item.is-active .nav-icon-pill::before {
+  opacity: 1;
 }
 </style>
 
