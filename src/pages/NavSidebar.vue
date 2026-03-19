@@ -21,10 +21,14 @@
       </span>
       <span class="nav-label">{{ item.label }}</span>
     </button>
+
+    <div class="nav-footer-version">v{{ appVersion }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { getVersion } from '@tauri-apps/api/app'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -38,6 +42,12 @@ const navItems = [
 function handleNavClick(path: string) {
   router.push(path)
 }
+
+// 显示应用版本号
+const appVersion = ref('0.0.0')
+onMounted(async () => {
+  appVersion.value = await getVersion()
+})
 </script>
 
 <style scoped>
@@ -135,6 +145,16 @@ function handleNavClick(path: string) {
 
 .nav-item.is-active .nav-icon-pill::before {
   opacity: 1;
+}
+
+.nav-footer-version {
+  margin-top: auto;
+  padding: 0.75rem 0.5rem 1rem;
+  text-align: center;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: #9ca7a5;
+  user-select: none;
 }
 </style>
 

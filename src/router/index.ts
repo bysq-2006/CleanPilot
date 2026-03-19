@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory } from "vue-router";
-import MainPanelView from "../pages/MainPanelView.vue";
+import MainPanelView from "../pages/DiskCleanupView.vue";
 import SettingsView from "../pages/SettingsView.vue";
 
 const routes = [

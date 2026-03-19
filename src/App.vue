@@ -116,7 +116,6 @@ body {
 .right-content {
   flex: 1;
   min-height: 0;
-  padding: 0.875rem;
   background: #f9fbfc;
 }
 </style>
