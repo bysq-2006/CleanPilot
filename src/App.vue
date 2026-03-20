@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import NoticeList from "./components/NoticeList.vue";
 import NavSidebar from "./pages/NavSidebar.vue";
 
 const appWindow = getCurrentWindow();
@@ -29,6 +30,8 @@ async function handleClose() {
       <div class="right-content">
         <router-view />
       </div>
+
+      <NoticeList />
     </section>
   </div>
 </template>
@@ -69,6 +72,7 @@ body {
 }
 
 .right-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;

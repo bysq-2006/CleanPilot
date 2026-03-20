@@ -1,3 +1,4 @@
+mod commands;
 mod llm;
 mod models;
 mod utils;
@@ -9,7 +10,9 @@ pub fn run() {
     tauri::Builder::default()
         .manage(AppStore::default())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![])
+        .invoke_handler(tauri::generate_handler![
+            commands::settings::open_storage_dir::open_storage_directory
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
