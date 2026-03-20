@@ -1,22 +1,17 @@
 <template>
-  <div class="settings-view">
-    <section class="settings-card">
+  <div class="settings-item">
+    <div class="settings-item__content">
+      <div class="settings-item__title">存储目录</div>
+      <div class="settings-item__desc">打开应用数据存储目录（配置与状态文件）</div>
+    </div>
 
-      <div class="settings-item">
-        <div class="settings-item__content">
-          <div class="settings-item__title">存储目录</div>
-          <div class="settings-item__desc">打开应用数据存储目录（配置与状态文件）</div>
-        </div>
-
-        <button class="settings-item__action" @click="openStorageDir">打开目录</button>
-      </div>
-    </section>
+    <button class="settings-item__action" @click="openStorageDir">打开目录</button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { pushNotice } from '../composables/useNoticeCenter'
+import { pushNotice } from '../../../composables/useNoticeCenter'
 
 async function openStorageDir() {
   try {
@@ -30,20 +25,6 @@ async function openStorageDir() {
 </script>
 
 <style scoped>
-.settings-view {
-  width: 100%;
-  height: 100%;
-  padding: 1rem;
-}
-
-.settings-card {
-  width: 100%;
-  background: #ffffff;
-  border: 0.0625rem solid #e2e7e6;
-  border-radius: 0.875rem;
-  overflow: hidden;
-}
-
 .settings-item {
   min-height: 4rem;
   padding: 0.875rem 1rem;
@@ -86,4 +67,3 @@ async function openStorageDir() {
   border-color: #ccd6d4;
 }
 </style>
-
