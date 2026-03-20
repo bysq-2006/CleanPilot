@@ -1,4 +1,5 @@
-use crate::llm::types::{LlmConfigMap, LlmResponse};
+use crate::llm::types::LlmResponse;
+use crate::models::llm_config::DeepseekConfig;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 
@@ -29,33 +30,23 @@ struct DeepSeekAssistantMessage {
     content: String,
 }
 
-fn get_required_config(config: &LlmConfigMap, key: &str) -> Result<String, String> {
-    let value = config
-        .get(key)
-        .map(|v| v.trim())
-        .filter(|v| !v.is_empty())
-        .ok_or_else(|| format!("missing required config: {key}"))?;
+fn get_required_config(value: &str, key: &str) -> Result<String, String> {
+    let value = value
+        .trim()
+        .to_string();
 
-    Ok(value.to_string())
-}
+    if value.is_empty() {
+        return Err(format!("missing required config: {key}"));
+    }
 
-fn get_optional_config(config: &LlmConfigMap, key: &str, default: &str) -> String {
-    config
-        .get(key)
-        .map(|v| v.trim())
-        .filter(|v| !v.is_empty())
-        .unwrap_or(default)
-        .to_string()
+    Ok(value)
 }
 
 /// 调用 DeepSeek 的 Chat Completions API
-/// config 需要有：
-/// 1. api_key: DeepSeek API Key
-/// 2. model: 可选，默认为 "deepseek-chat"
-pub async fn chat(prompt: String, config: LlmConfigMap) -> Result<LlmResponse, String> {
-    let api_key = get_required_config(&config, "api_key")?;
-    let model = get_optional_config(&config, "model", "deepseek-chat");
-    let base_url = get_optional_config(&config, "base_url", "https://api.deepseek.com");
+pub async fn chat(prompt: String, config: &DeepseekConfig) -> Result<LlmResponse, String> {
+    let api_key = get_required_config(&config.api_key, "api_key")?;
+    let model = config.model.trim().to_string();
+    let base_url = config.base_url.trim().to_string();
 
     let endpoint = format!("{}/chat/completions", base_url.trim_end_matches('/'));
 

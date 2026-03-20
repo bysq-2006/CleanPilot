@@ -6,22 +6,20 @@ use crate::models::appstore::AppStore;
 pub fn get_config(
     app: AppHandle,
     section: String,
-    key: String,
-) -> Result<Option<serde_json::Value>, String> {
+) -> Result<serde_json::Value, String> {
     let store = app.state::<AppStore>();
     let config = store
         .config
         .lock()
         .map_err(|e| format!("配置锁获取失败: {}", e))?;
 
-    Ok(config.get(&section, &key))
+    config.get_section(&section)
 }
 
 #[tauri::command]
 pub fn save_config(
     app: AppHandle,
     section: String,
-    key: String,
     value: serde_json::Value,
 ) -> Result<(), String> {
     let store = app.state::<AppStore>();
@@ -30,6 +28,6 @@ pub fn save_config(
         .lock()
         .map_err(|e| format!("配置锁获取失败: {}", e))?;
 
-    config.save(section, key, value)
+    config.save_section(&section, value)
 }
 

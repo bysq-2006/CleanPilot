@@ -1,7 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-
-pub type LlmConfigMap = HashMap<String, String>;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LlmResponse {

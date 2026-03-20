@@ -1,17 +1,16 @@
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 use tauri::{AppHandle, Manager};
 
+use crate::models::llm_config::LlmConfig;
 use crate::utils::state_file::{load_state_from_disk, save_state_to_disk};
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     #[serde(skip)]
     pub config_file_path: PathBuf,
-    /// 双层 HashMap: section -> (key -> value)
     #[serde(default)]
-    pub data: HashMap<String, HashMap<String, serde_json::Value>>,
+    pub llm: LlmConfig,
 }
 
 impl Config {
@@ -31,7 +30,7 @@ impl Config {
     pub fn load_and_sync(&mut self) -> Result<(), String> {
         let dir_path = self.config_dir()?;
         let disk_config: Config = load_state_from_disk(&dir_path, "config.json")?;
-        self.data = disk_config.data;
+        self.llm = disk_config.llm;
         Ok(())
     }
 
@@ -47,25 +46,22 @@ impl Config {
             .ok_or_else(|| format!("配置文件路径无效: {}", self.config_file_path.display()))
     }
 
-    /// 获取配置项的值
-    /// - `key`: 配置项的键
-    /// - 返回值：配置项的值，如果不存在则返回 `None`
-    pub fn get(&self, section: &str, key: &str) -> Option<serde_json::Value> {
-        self.data.get(section).and_then(|m| m.get(key)).cloned()
+    pub fn get_section(&self, section: &str) -> Result<serde_json::Value, String> {
+        match section {
+            "llm" => serde_json::to_value(&self.llm).map_err(|e| format!("llm 配置序列化失败: {}", e)),
+            _ => Err(format!("未知配置分区: {}", section)),
+        }
     }
 
-    /// 保存单个配置项，并立即写入磁盘
-    /// - `key`: 配置项的键
-    /// - `value`: 配置项的值，必须是可序列化为 JSON 的类型
-    pub fn save(
-        &mut self,
-        section: impl Into<String>,
-        key: impl Into<String>,
-        value: serde_json::Value,
-    ) -> Result<(), String> {
-        let section = section.into();
-        let key = key.into();
-        self.data.entry(section).or_default().insert(key, value);
+    pub fn save_section(&mut self, section: &str, value: serde_json::Value) -> Result<(), String> {
+        match section {
+            "llm" => {
+                self.llm = serde_json::from_value(value)
+                    .map_err(|e| format!("llm 配置反序列化失败: {}", e))?;
+            }
+            _ => return Err(format!("未知配置分区: {}", section)),
+        }
+
         let dir_path = self.config_dir()?;
         save_state_to_disk(&dir_path, "config.json", self)
     }

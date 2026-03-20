@@ -1,43 +1,37 @@
+<!-- 这一整个页面 LLM 的具体字段都是根据对象的结构自动生成的 -->
 <template>
-  <div class="settings-item settings-item--block">
-    <div class="settings-item__header">
-      <div class="settings-item__title">LLM 配置</div>
-      <div class="settings-item__desc">配置当前使用的模型服务商，以及各服务商对应的参数</div>
+  <div class="llm-config-setting">
+    <div class="llm-config-setting__header">
+      <div class="llm-config-setting__title">LLM 配置</div>
+      <div class="llm-config-setting__desc">根据后端返回的配置结构动态展示当前 provider 的字段</div>
     </div>
 
-    <div class="llm-config">
+    <div v-if="providerNames.length" class="llm-config-setting__body">
       <label class="field">
-        <span class="field__label">当前服务商</span>
-        <select v-model="currentProvider" class="field__control">
-          <option v-for="name in providerNames" :key="name" :value="name">{{ name }}</option>
+        <span class="field__label">当前提供商</span>
+        <select v-model="currentProvider" class="field__control" @change="handleProviderChange">
+          <option v-for="provider in providerNames" :key="provider" :value="provider">
+            {{ provider }}
+          </option>
         </select>
       </label>
 
-      <div class="provider-tools">
-        <input
-          v-model.trim="newProviderName"
-          class="field__control"
-          type="text"
-          placeholder="新增服务商名称，例如 openai"
-          @keydown.enter.prevent="addProvider"
-        />
-        <button class="settings-item__action" @click="addProvider">新增服务商</button>
-      </div>
+      <div class="provider-panel">
+        <div class="provider-panel__title">{{ currentProvider }}</div>
 
-      <label class="field">
-        <span class="field__label">{{ currentProvider }} 配置（JSON）</span>
-        <textarea
-          v-model="providerJsonText"
-          class="field__control field__textarea"
-          spellcheck="false"
-          placeholder='例如：{"api_key":"", "base_url":"", "model":""}'
-        />
-      </label>
-
-      <div class="actions">
-        <button class="settings-item__action" @click="save">保存配置</button>
+        <div v-for="field in currentProviderFields" :key="field.key" class="provider-field">
+          <div class="provider-field__key">{{ field.key }}</div>
+          <input
+            v-model="field.valueRef.value"
+            class="provider-field__input"
+            type="text"
+            @blur="saveConfig(false)"
+          />
+        </div>
       </div>
     </div>
+
+    <div v-else class="llm-config-setting__empty">暂无可用的 provider 配置</div>
   </div>
 </template>
 
@@ -46,144 +40,83 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { pushNotice } from '../../../composables/useNoticeCenter'
 
-type ProviderConfig = Record<string, string>
+type LlmConfigObject = Record<string, unknown>
+type ProviderObject = Record<string, string>
 
-const SECTION = 'llm'
-const KEY = 'config'
-
-const currentProvider = ref('deepseek')
-const providerMap = ref<Record<string, ProviderConfig>>({
-  deepseek: { api_key: '', base_url: 'https://api.deepseek.com', model: 'deepseek-chat' },
-})
-
-const providerJsonText = ref('{}')
-const newProviderName = ref('')
+const configState = ref<LlmConfigObject>({})
+const currentProvider = ref('')
+const isLoaded = ref(false)
 
 const providerNames = computed(() => {
-  const names = Object.keys(providerMap.value)
-  return names.length ? names : ['deepseek']
+  return Object.keys(configState.value).filter((key) => key !== 'current_provider')
 })
 
-function toBackendShape() {
-  return {
-    current_provider: currentProvider.value,
-    ...providerMap.value,
-  }
-}
+const currentProviderConfig = computed<ProviderObject>(() => {
+  const provider = currentProvider.value
+  const raw = configState.value[provider]
 
-function normalizeFromBackend(input: unknown): { currentProvider: string; providers: Record<string, ProviderConfig> } {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    return {
-      currentProvider: 'deepseek',
-      providers: { deepseek: { api_key: '', base_url: 'https://api.deepseek.com', model: 'deepseek-chat' } },
-    }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return {}
   }
 
-  const raw = input as Record<string, unknown>
-  const providers: Record<string, ProviderConfig> = {}
-
-  for (const [key, value] of Object.entries(raw)) {
-    if (key === 'current_provider') continue
-    if (!value || typeof value !== 'object' || Array.isArray(value)) continue
-
-    const obj = value as Record<string, unknown>
-    const conf: ProviderConfig = {}
-    for (const [k, v] of Object.entries(obj)) {
-      conf[k] = typeof v === 'string' ? v : JSON.stringify(v)
-    }
-    providers[key] = conf
-  }
-
-  const firstProvider = Object.keys(providers)[0] ?? 'deepseek'
-  const parsedCurrent = typeof raw.current_provider === 'string' && raw.current_provider.trim()
-    ? raw.current_provider.trim()
-    : firstProvider
-
-  if (!providers[parsedCurrent]) {
-    providers[parsedCurrent] = {}
-  }
-
-  if (Object.keys(providers).length === 0) {
-    providers.deepseek = { api_key: '', base_url: 'https://api.deepseek.com', model: 'deepseek-chat' }
-  }
-
-  return {
-    currentProvider: parsedCurrent,
-    providers,
-  }
-}
-
-function syncEditorFromCurrentProvider() {
-  const current = providerMap.value[currentProvider.value] ?? {}
-  providerJsonText.value = JSON.stringify(current, null, 2)
-}
-
-watch(currentProvider, () => {
-  if (!providerMap.value[currentProvider.value]) {
-    providerMap.value[currentProvider.value] = {}
-  }
-  syncEditorFromCurrentProvider()
+  return raw as ProviderObject
 })
 
-function addProvider() {
-  const name = newProviderName.value.trim()
-  if (!name) {
-    pushNotice('error', '服务商名称不能为空')
+const currentProviderFields = computed(() => {
+  return Object.keys(currentProviderConfig.value).map((key) => ({
+    key,
+    valueRef: computed({
+      get: () => currentProviderConfig.value[key] ?? '',
+      set: (value: string) => {
+        const provider = currentProvider.value
+        const raw = configState.value[provider]
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+          configState.value[provider] = { [key]: value }
+          return
+        }
+
+        ;(raw as ProviderObject)[key] = value
+      },
+    }),
+  }))
+})
+
+watch(providerNames, (names) => {
+  if (!names.length) {
+    currentProvider.value = ''
     return
   }
 
-  if (!providerMap.value[name]) {
-    providerMap.value[name] = {}
+  if (!names.includes(currentProvider.value)) {
+    const backendCurrent = configState.value.current_provider
+    currentProvider.value = typeof backendCurrent === 'string' && names.includes(backendCurrent)
+      ? backendCurrent
+      : names[0]
   }
+}, { immediate: true })
 
-  currentProvider.value = name
-  newProviderName.value = ''
-  pushNotice('success', `已新增服务商：${name}`)
-}
+watch(currentProvider, (provider) => {
+  if (provider) {
+    configState.value.current_provider = provider
+  }
+})
 
-async function load() {
+async function loadConfig() {
   try {
-    const value = await invoke<unknown>('get_config', {
-      section: SECTION,
-      key: KEY,
-    })
-
-    const normalized = normalizeFromBackend(value)
-    providerMap.value = normalized.providers
-    currentProvider.value = normalized.currentProvider
-    syncEditorFromCurrentProvider()
+    const value = await invoke<LlmConfigObject>('get_config', { section: 'llm' })
+    configState.value = value
+    isLoaded.value = true
   } catch (error) {
     console.error('读取 LLM 配置失败:', error)
-    syncEditorFromCurrentProvider()
     pushNotice('error', '读取 LLM 配置失败')
   }
 }
 
-async function save() {
-  let parsedCurrentConfig: ProviderConfig
-  try {
-    const parsed = JSON.parse(providerJsonText.value) as unknown
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      pushNotice('error', '当前服务商配置必须是 JSON 对象')
-      return
-    }
-
-    parsedCurrentConfig = {}
-    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
-      parsedCurrentConfig[k] = typeof v === 'string' ? v : JSON.stringify(v)
-    }
-  } catch {
-    pushNotice('error', '当前服务商配置不是合法 JSON')
-    return
-  }
-
-  providerMap.value[currentProvider.value] = parsedCurrentConfig
-
+async function saveConfig(showNotice = true) {
   try {
     await invoke('save_config', {
-      section: SECTION,
-      key: KEY,
-      value: toBackendShape(),
+      section: 'llm',
+      value: configState.value,
     })
     pushNotice('success', 'LLM 配置已保存')
   } catch (error) {
@@ -192,43 +125,41 @@ async function save() {
   }
 }
 
-onMounted(load)
+function handleProviderChange() {
+  if (!isLoaded.value) {
+    return
+  }
+
+  saveConfig(false)
+}
+
+onMounted(loadConfig)
 </script>
 
 <style scoped>
-.settings-item {
-  min-height: 4rem;
-  padding: 0.875rem 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+.llm-config-setting {
+  padding: 1rem;
 }
 
-.settings-item--block {
-  display: block;
-  border-top: 0.0625rem solid #eef3f2;
+.llm-config-setting__header {
+  margin-bottom: 1rem;
 }
 
-.settings-item__header {
-  margin-bottom: 0.75rem;
-}
-
-.settings-item__title {
+.llm-config-setting__title {
   font-size: 0.875rem;
   color: #2f3a39;
-  font-weight: 500;
+  font-weight: 600;
 }
 
-.settings-item__desc {
+.llm-config-setting__desc {
   margin-top: 0.25rem;
   color: #7a8584;
   font-size: 0.75rem;
 }
 
-.llm-config {
+.llm-config-setting__body {
   display: grid;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .field {
@@ -237,57 +168,53 @@ onMounted(load)
 }
 
 .field__label {
-  color: #4d5857;
   font-size: 0.75rem;
+  color: #4d5857;
 }
 
-.field__control {
+.field__control,
+.provider-field__input {
   width: 100%;
-  min-height: 2rem;
-  border-radius: 0.5rem;
+  min-height: 2.25rem;
   border: 0.0625rem solid #d7dfdd;
+  border-radius: 0.625rem;
   background: #fff;
   color: #2f3a39;
+  padding: 0.5rem 0.75rem;
   font-size: 0.75rem;
-  padding: 0.375rem 0.625rem;
   outline: none;
 }
 
-.field__control:focus {
-  border-color: #b9c8c4;
+.provider-panel {
+  border: 0.0625rem solid #e8edec;
+  border-radius: 0.75rem;
+  padding: 0.875rem;
+  display: grid;
+  gap: 0.75rem;
 }
 
-.field__textarea {
-  min-height: 8.5rem;
-  resize: vertical;
-  font-family: Consolas, 'Courier New', monospace;
+.provider-panel__title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #2f3a39;
 }
 
-.provider-tools {
-  display: flex;
-  gap: 0.5rem;
+.provider-field {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  gap: 0.75rem;
+  align-items: center;
 }
 
-.actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.settings-item__action {
-  height: 2rem;
-  padding: 0 0.875rem;
-  border-radius: 0.625rem;
-  border: 0.0625rem solid #d7dfdd;
-  background: #f8faf9;
-  color: #4d5857;
+.provider-field__key {
+  color: #5c6766;
   font-size: 0.75rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
+  word-break: break-word;
 }
 
-.settings-item__action:hover:not(:disabled) {
-  background: #eef3f2;
-  border-color: #ccd6d4;
+.llm-config-setting__empty {
+  padding: 1rem;
+  color: #7a8584;
+  font-size: 0.75rem;
 }
 </style>
