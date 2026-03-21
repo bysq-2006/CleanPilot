@@ -1,16 +1,28 @@
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use super::config::Config;
 use crate::agent::runtime::AgentRuntime;
-use crate::llm;
-use crate::llm::types::LlmResponse;
+use crate::llm::LlmService;
 
 /// 全局状态管理，存储一些全局共享的数据
-#[derive(Default)]
 pub struct AppStore {
     pub agent: AgentRuntime,
-    pub config: Mutex<Config>,
+    pub config: Arc<Mutex<Config>>,
+    pub llm: LlmService,
     pub ui_message_history: Mutex<Vec<String>>,
+}
+
+impl Default for AppStore {
+    fn default() -> Self {
+        let config = Arc::new(Mutex::new(Config::default()));
+
+        Self {
+            agent: AgentRuntime::default(),
+            llm: LlmService::new(Arc::clone(&config)),
+            config,
+            ui_message_history: Mutex::default(),
+        }
+    }
 }
 
 impl AppStore {

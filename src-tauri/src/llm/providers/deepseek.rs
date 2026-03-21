@@ -1,4 +1,3 @@
-use crate::llm::types::LlmResponse;
 use crate::models::llm_config::DeepseekConfig;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
@@ -43,7 +42,7 @@ fn get_required_config(value: &str, key: &str) -> Result<String, String> {
 }
 
 /// 调用 DeepSeek 的 Chat Completions API
-pub async fn chat(prompt: String, config: &DeepseekConfig) -> Result<LlmResponse, String> {
+pub async fn chat(prompt: String, config: &DeepseekConfig) -> Result<String, String> {
     let api_key = get_required_config(&config.api_key, "api_key")?;
     let model = config.model.trim().to_string();
     let base_url = config.base_url.trim().to_string();
@@ -88,5 +87,5 @@ pub async fn chat(prompt: String, config: &DeepseekConfig) -> Result<LlmResponse
         .map(|choice| choice.message.content.clone())
         .ok_or_else(|| "deepseek response has no choices".to_string())?;
 
-    Ok(LlmResponse::new("deepseek", model, content))
+    Ok(content)
 }

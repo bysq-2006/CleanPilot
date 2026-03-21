@@ -3,9 +3,8 @@ pub mod types;
 
 use std::sync::{Arc, Mutex};
 
-use self::types::LlmResponse;
 use crate::models::config::Config;
-use crate::models::llm_config::{LlmConfig, LlmProvider};
+use crate::models::llm_config::LlmProvider;
 
 #[derive(Debug, Clone)]
 pub struct LlmService {
@@ -18,7 +17,7 @@ impl LlmService {
     }
 
     /// 基于当前内部配置调用聊天接口
-    pub async fn chat(&self, prompt: String) -> Result<LlmResponse, String> {
+    pub async fn chat(&self, prompt: String) -> Result<String, String> {
         let llm_config = self
             .config
             .lock()
