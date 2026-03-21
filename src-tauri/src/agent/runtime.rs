@@ -7,28 +7,25 @@ use std::{collections::VecDeque, sync::Mutex};
 
 use super::history::{AgentMessage, AgentMessageRole};
 use super::task_queue::AgentTask;
+use crate::llm::LlmService;
 use tokio::time::sleep;
 
 #[derive(Clone)]
 pub struct AgentRuntime {
     pub history: Arc<Mutex<Vec<AgentMessage>>>,
     pub tasks: Arc<Mutex<VecDeque<AgentTask>>>,
-}
-
-impl Default for AgentRuntime {
-    fn default() -> Self {
-        Self::new()
-    }
+    pub llm: LlmService,
 }
 
 impl AgentRuntime {
-    pub fn new() -> Self {
+    pub fn new(llm: LlmService) -> Self {
         Self {
             history: Arc::new(Mutex::new(vec![AgentMessage {
                 role: AgentMessageRole::System,
                 content: "你是 CleanPilot 的系统级 Agent。请遵守系统规则，基于历史记录思考，并输出安全、简洁、可执行的下一步。".to_string(),
             }])),
             tasks: Arc::default(),
+            llm,
         }
     }
 

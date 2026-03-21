@@ -8,7 +8,6 @@ use crate::llm::LlmService;
 pub struct AppStore {
     pub agent: AgentRuntime,
     pub config: Arc<Mutex<Config>>,
-    pub llm: LlmService,
     pub ui_message_history: Mutex<Vec<String>>,
 }
 
@@ -17,8 +16,7 @@ impl Default for AppStore {
         let config = Arc::new(Mutex::new(Config::default()));
 
         Self {
-            agent: AgentRuntime::default(),
-            llm: LlmService::new(Arc::clone(&config)),
+            agent: AgentRuntime::new(LlmService::new(Arc::clone(&config))),
             config,
             ui_message_history: Mutex::default(),
         }

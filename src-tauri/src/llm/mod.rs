@@ -1,5 +1,4 @@
 pub mod providers;
-pub mod types;
 
 use std::sync::{Arc, Mutex};
 
