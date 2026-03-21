@@ -14,13 +14,13 @@ pub fn run() {
         .setup(|app| {
             let app_handle = app.handle().clone();
             let store = app.state::<AppStore>();
+            store.agent.start();
             let mut config = store
                 .config
                 .lock()
                 .map_err(|e| format!("配置锁获取失败: {}", e))?;
 
             config.init(&app_handle)?;
-            agent::runtime::start_agent_loop();
 
             Ok(())
         })
