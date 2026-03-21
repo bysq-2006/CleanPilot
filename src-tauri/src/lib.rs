@@ -1,3 +1,4 @@
+mod agent;
 mod commands;
 mod llm;
 mod models;
@@ -19,6 +20,7 @@ pub fn run() {
                 .map_err(|e| format!("配置锁获取失败: {}", e))?;
 
             config.init(&app_handle)?;
+            agent::runtime::start_agent_loop();
 
             Ok(())
         })

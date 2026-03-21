@@ -4,6 +4,7 @@ use super::config::Config;
 use crate::llm;
 use crate::llm::types::LlmResponse;
 
+/// 全局状态管理，存储一些全局共享的数据
 #[derive(Default)]
 pub struct AppStore {
     pub config: Mutex<Config>,
