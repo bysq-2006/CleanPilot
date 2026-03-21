@@ -1,13 +1,34 @@
 pub mod providers;
 pub mod types;
 
+use std::sync::{Arc, Mutex};
+
 use self::types::LlmResponse;
+use crate::models::config::Config;
 use crate::models::llm_config::{LlmConfig, LlmProvider};
 
-/// 通过config匹配不同的LLM提供商，并调用对应的chat函数
-pub async fn chat(prompt: String, config: &LlmConfig) -> Result<LlmResponse, String> {
-    match config.current_provider {
-        LlmProvider::Deepseek => providers::deepseek::chat(prompt, &config.deepseek).await,
+#[derive(Debug, Clone)]
+pub struct LlmService {
+    config: Arc<Mutex<Config>>,
+}
+
+impl LlmService {
+    pub fn new(config: Arc<Mutex<Config>>) -> Self {
+        Self { config }
+    }
+
+    /// 基于当前内部配置调用聊天接口
+    pub async fn chat(&self, prompt: String) -> Result<LlmResponse, String> {
+        let llm_config = self
+            .config
+            .lock()
+            .map_err(|e| format!("LLM 配置锁获取失败: {}", e))?
+            .llm
+            .clone();
+
+        match llm_config.current_provider {
+            LlmProvider::Deepseek => providers::deepseek::chat(prompt, &llm_config.deepseek).await,
+        }
     }
 }
 

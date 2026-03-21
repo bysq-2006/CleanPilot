@@ -11,7 +11,6 @@ use tokio::time::sleep;
 
 #[derive(Clone)]
 pub struct AgentRuntime {
-    pub system_prompt: String,
     pub history: Arc<Mutex<Vec<AgentMessage>>>,
     pub tasks: Arc<Mutex<VecDeque<AgentTask>>>,
 }
@@ -25,8 +24,10 @@ impl Default for AgentRuntime {
 impl AgentRuntime {
     pub fn new() -> Self {
         Self {
-            system_prompt: "你是 CleanPilot 的系统级 Agent。请遵守系统规则，基于历史记录思考，并输出安全、简洁、可执行的下一步。".to_string(),
-            history: Arc::default(),
+            history: Arc::new(Mutex::new(vec![AgentMessage {
+                role: AgentMessageRole::System,
+                content: "你是 CleanPilot 的系统级 Agent。请遵守系统规则，基于历史记录思考，并输出安全、简洁、可执行的下一步。".to_string(),
+            }])),
             tasks: Arc::default(),
         }
     }
@@ -91,6 +92,44 @@ impl AgentRuntime {
             .lock()
             .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
         history.push(message);
+        Ok(())
+    }
+
+    pub fn get_system_prompt(&self) -> Result<String, String> {
+        let history = self
+            .history
+            .lock()
+            .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
+
+        history
+            .iter()
+            .find(|message| matches!(message.role, AgentMessageRole::System))
+            .map(|message| message.content.clone())
+            .ok_or_else(|| "Agent 系统提示词不存在".to_string())
+    }
+
+    pub fn set_system_prompt(&self, prompt: String) -> Result<(), String> {
+        let mut history = self
+            .history
+            .lock()
+            .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
+
+        if let Some(message) = history
+            .iter_mut()
+            .find(|message| matches!(message.role, AgentMessageRole::System))
+        {
+            message.content = prompt;
+            return Ok(());
+        }
+
+        history.insert(
+            0,
+            AgentMessage {
+                role: AgentMessageRole::System,
+                content: prompt,
+            },
+        );
+
         Ok(())
     }
 }
