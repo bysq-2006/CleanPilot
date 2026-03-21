@@ -3,13 +3,17 @@
 /// 而这一层就是要根据match去调用不同的任务文件里的函数
 use std::sync::Arc;
 use std::time::Duration;
+use std::{collections::VecDeque, sync::Mutex};
 
-use super::types::{AgentTask, AgentTaskQueue};
+use super::history::{AgentMessage, AgentMessageRole};
+use super::task_queue::AgentTask;
 use tokio::time::sleep;
 
 #[derive(Clone)]
 pub struct AgentRuntime {
-    pub tasks: AgentTaskQueue,
+    pub system_prompt: String,
+    pub history: Arc<Mutex<Vec<AgentMessage>>>,
+    pub tasks: Arc<Mutex<VecDeque<AgentTask>>>,
 }
 
 impl Default for AgentRuntime {
@@ -21,6 +25,8 @@ impl Default for AgentRuntime {
 impl AgentRuntime {
     pub fn new() -> Self {
         Self {
+            system_prompt: "你是 CleanPilot 的系统级 Agent。请遵守系统规则，基于历史记录思考，并输出安全、简洁、可执行的下一步。".to_string(),
+            history: Arc::default(),
             tasks: Arc::default(),
         }
     }
@@ -32,7 +38,7 @@ impl AgentRuntime {
         });
     }
 
-    /// 主要循环
+    /// 主要循环，负责轮询任务队列并执行任务
     async fn run_loop(self) {
         loop {
             let next_task = match self.tasks.lock() {
@@ -50,6 +56,25 @@ impl AgentRuntime {
         }
     }
 
+    /// 处理单个任务，根据任务类型调用不同的处理逻辑
+    async fn handle_task(&self, task: AgentTask) {
+        match task {
+            AgentTask::UserQuestion { content } => {
+                if let Err(e) = self.append_history(AgentMessage {
+                    role: AgentMessageRole::User,
+                    content: content.clone(),
+                }) {
+                    eprintln!("Agent 写入历史记录失败: {}", e);
+                }
+                println!("Agent 收到用户问题任务: {}", content);
+            }
+            AgentTask::ToolCall { tool_name, payload } => {
+                println!("Agent 收到工具调用任务: {}, payload={}", tool_name, payload);
+            }
+        }
+    }
+
+    /// 压入一个任务，类型要根据 AgentTask
     pub fn push_task(&self, task: AgentTask) -> Result<(), String> {
         let mut tasks = self
             .tasks
@@ -59,14 +84,13 @@ impl AgentRuntime {
         Ok(())
     }
 
-    async fn handle_task(&self, task: AgentTask) {
-        match task {
-            AgentTask::UserQuestion { content } => {
-                println!("Agent 收到用户问题任务: {}", content);
-            }
-            AgentTask::ToolCall { tool_name, payload } => {
-                println!("Agent 收到工具调用任务: {}, payload={}", tool_name, payload);
-            }
-        }
+    /// 压入一条历史记录，类型要根据 AgentMessage
+    fn append_history(&self, message: AgentMessage) -> Result<(), String> {
+        let mut history = self
+            .history
+            .lock()
+            .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
+        history.push(message);
+        Ok(())
     }
 }

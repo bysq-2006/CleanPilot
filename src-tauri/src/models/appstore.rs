@@ -10,7 +10,7 @@ use crate::llm::types::LlmResponse;
 pub struct AppStore {
     pub agent: AgentRuntime,
     pub config: Mutex<Config>,
-    pub chat_history: Mutex<Vec<String>>,
+    pub ui_message_history: Mutex<Vec<String>>,
 }
 
 impl AppStore {
