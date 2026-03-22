@@ -13,5 +13,16 @@ pub fn chat(app: AppHandle, content: String) -> Result<(), String> {
 #[tauri::command]
 pub fn get_history(app: AppHandle, start_index: usize) -> Result<Vec<AgentMessage>, String> {
     let store = app.state::<AppStore>();
-    store.agent.history.get_from(start_index)
+    let history = store
+        .agent
+        .history
+        .inner
+        .lock()
+        .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
+
+    if start_index >= history.len() {
+        return Ok(Vec::new());
+    }
+
+    Ok(history[start_index..].to_vec())
 }

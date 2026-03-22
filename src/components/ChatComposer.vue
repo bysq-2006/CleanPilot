@@ -1,42 +1,45 @@
 <template>
-  <div class="chat-panel">
-    <div class="top-section">
-    </div>
-
-    <div class="bottom-section">
-      <div class="input-row">
-        <textarea
-          ref="textareaRef"
-          v-model="inputText"
-          rows="1"
-          class="main-input main-textarea"
-          placeholder="请输入内容"
-          @input="resizeTextarea"
+  <div class="bottom-section">
+    <div class="input-row">
+      <textarea
+        ref="textareaRef"
+        v-model="inputText"
+        rows="1"
+        class="main-input main-textarea"
+        placeholder="请输入内容"
+        @input="resizeTextarea"
+        @keydown.enter.exact.prevent="submitChat"
+      />
+      <button
+        type="button"
+        class="send-button"
+        aria-label="发送"
+        :disabled="isSending"
+        @click="submitChat"
+      >
+        <img
+          src="/send.svg"
+          alt="发送"
+          class="send-icon"
         />
-        <button
-          type="button"
-          class="send-button"
-          aria-label="发送"
-        >
-          <img
-            src="/send.svg"
-            alt="发送"
-            class="send-icon"
-          />
-        </button>
-      </div>
-      <span class="tip-text">AI不一定准确，请仔细查看以防万一</span>
+      </button>
     </div>
+    <span class="tip-text">AI不一定准确，请仔细查看以防万一</span>
   </div>
 </template>
 
 <script setup lang="ts">
+import { invoke } from '@tauri-apps/api/core'
 import { nextTick, onMounted, ref } from 'vue'
+
+import { pushNotice } from '../composables/useNoticeCenter'
 
 const inputText = ref('')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const isSending = ref(false)
 const maxTextareaHeightRem = 11.25
 
+/// 输入框高度自适应，最大高度为 11.25rem，超过后显示滚动条
 const resizeTextarea = () => {
   const el = textareaRef.value
   if (!el) return
@@ -53,6 +56,34 @@ const resizeTextarea = () => {
   el.style.overflowY = el.scrollHeight > maxTextareaHeightPx ? 'auto' : 'hidden'
 }
 
+const resetTextarea = async () => {
+  await nextTick()
+  resizeTextarea()
+}
+
+const submitChat = async () => {
+  const content = inputText.value.trim()
+
+  if (!content || isSending.value) {
+    return
+  }
+
+  isSending.value = true
+
+  try {
+    await invoke('chat', { content })
+    inputText.value = ''
+    await resetTextarea()
+  }
+  catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    pushNotice('error', `发送失败：${message}`)
+  }
+  finally {
+    isSending.value = false
+  }
+}
+
 onMounted(() => {
   nextTick(() => {
     resizeTextarea()
@@ -61,17 +92,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.chat-panel {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  min-height: 100%;
-}
-
-.top-section {
-  flex: 1;
-}
-
 .main-input {
   display: block;
   width: 100%;
@@ -111,6 +131,11 @@ onMounted(() => {
   background-color: #ffffff;
   cursor: pointer;
   transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.12s ease;
+}
+
+.send-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .send-button:hover {

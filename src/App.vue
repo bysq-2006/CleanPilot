@@ -118,7 +118,7 @@ body {
 }
 
 .right-content {
-  flex: 1;
+  height: 35rem;
   min-height: 0;
   background: #f9fbfc;
 }

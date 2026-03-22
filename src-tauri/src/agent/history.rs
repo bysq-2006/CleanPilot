@@ -28,7 +28,7 @@ pub struct AgentMessage {
 
 #[derive(Clone)]
 pub struct AgentHistory {
-    inner: Arc<Mutex<Vec<AgentMessage>>>,
+    pub inner: Arc<Mutex<Vec<AgentMessage>>>,
 }
 
 impl AgentHistory {
@@ -48,19 +48,6 @@ impl AgentHistory {
             .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
         history.push(message);
         Ok(())
-    }
-
-    pub fn get_from(&self, start_index: usize) -> Result<Vec<AgentMessage>, String> {
-        let history = self
-            .inner
-            .lock()
-            .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
-
-        if start_index >= history.len() {
-            return Ok(Vec::new());
-        }
-
-        Ok(history[start_index..].to_vec())
     }
 
     pub fn get_system_prompt(&self) -> Result<String, String> {
@@ -100,29 +87,39 @@ impl AgentHistory {
 
         Ok(())
     }
-}
 
-impl AgentMessage {
-    /// 序列化成字符串，格式为 {"role": "user", "content": "用户输入的内容"}
+    /// 将本身的历史记录序列化成字符串，方便调试或者传输
     #[allow(dead_code)]
-    pub fn serialize(&self) -> String {
+    pub fn serialize_all(&self) -> Result<String, String> {
+        let history = self
+            .inner
+            .lock()
+            .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
+
+        Ok(Self::serialize_messages(&history))
+    }
+
+    /// 将多条消息序列化成字符串，方便调试或者传输
+    #[allow(dead_code)]
+    pub fn serialize_messages(messages: &[AgentMessage]) -> String {
+        let serialized_items = messages
+            .iter()
+            .map(Self::serialize_message)
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        format!("[{}]", serialized_items)
+    }
+
+    /// 将单条消息序列化成字符串，方便调试或者传输
+    #[allow(dead_code)]
+    pub fn serialize_message(message: &AgentMessage) -> String {
         format!(
             "{{\"role\": \"{}\", \"content\": \"{}\"}}",
-            self.role.as_str(),
-            self.content.replace('"', "\\\"")
+            message.role.as_str(),
+            message.content.replace('"', "\\\"")
         )
     }
 }
 
-/// 将历史记录列表序列化成可直接发送给 OpenAI / DeepSeek 的 messages JSON 字符串
-#[allow(dead_code)]
-pub fn serialize_history(messages: &[AgentMessage]) -> String {
-    let serialized_items = messages
-        .iter()
-        .map(AgentMessage::serialize)
-        .collect::<Vec<_>>()
-        .join(", ");
-
-    format!("[{}]", serialized_items)
-}
 

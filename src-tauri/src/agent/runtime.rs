@@ -1,7 +1,6 @@
 /// 设计哲学是：本身有一个循环，然后循环要根据任务列表去执行任务，并且他唯一的输出就是输出在 history 里面，不会直接和前端交互
 /// 然后每一任务都是一个单独的文件，任务的执行逻辑也在那个文件里
 /// 而这一层就是要根据match去调用不同的任务文件里的函数
-use std::sync::Arc;
 use std::time::Duration;
 
 use super::history::AgentHistory;
