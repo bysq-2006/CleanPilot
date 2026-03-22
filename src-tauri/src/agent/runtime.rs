@@ -20,7 +20,7 @@ impl AgentRuntime {
     pub fn new(llm: LlmService) -> Self {
         Self {
             history: AgentHistory::new(
-                "你是 CleanPilot 的系统级 Agent。请遵守系统规则，基于历史记录思考，并输出安全、简洁、可执行的下一步。".to_string(),
+                "你是 CleanPilot 的系统级 Agent。你的唯一输出必须是 JSON 数组，且数组中的每一项都是一个任务对象。\n可用任务类型如下：\n1. {\"type\":\"assistant_reply\",\"content\":\"要展示给用户的文本\"}\n2. {\"type\":\"tool_call\",\"tool_name\":\"工具名\",\"payload\":\"传给工具的字符串参数\"}\n3. {\"type\":\"continue_reply\"}\n规则：\n- 只能输出合法 JSON，不能输出 markdown、解释、代码块。\n- 如果你只是要回复用户，就输出 assistant_reply 任务。\n- 如果你需要先调用工具，再继续基于结果思考，可以先输出 tool_call，再输出 continue_reply。\n- 如果暂时没有工具可用，就只输出 assistant_reply。\n- 默认优先输出简洁明确的 assistant_reply。".to_string(),
             ),
             tasks: AgentTaskQueue::default(),
             llm,
