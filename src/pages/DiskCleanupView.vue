@@ -1,10 +1,10 @@
 <template>
-  <div class="history-scroll-container">
-    <ChatHistoryList :messages="messages" :sync-error="syncError" />
-  </div>
+  <div class="disk-cleanup-view">
+    <div class="history-scroll-container">
+      <ChatHistoryList :messages="messages" :sync-error="syncError" />
+    </div>
 
-  <div class="composer-dock">
-    <ChatComposer />
+    <ChatComposer class="composer-dock" />
   </div>
 </template>
 
@@ -17,18 +17,21 @@ const { messages, syncError } = useAgentHistory()
 </script>
 
 <style scoped>
-.history-scroll-container {
+.disk-cleanup-view {
   height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-scroll-container {
+  flex: 1;
   min-height: 0;
   overflow-y: auto;
 }
 
 .composer-dock {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 1;
   width: 100%;
+  flex-shrink: 0;
 }
 </style>

@@ -73,6 +73,7 @@ body {
 
 .right-panel {
   position: relative;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -118,7 +119,7 @@ body {
 }
 
 .right-content {
-  height: 35rem;
+  flex: 1;
   min-height: 0;
   background: #f9fbfc;
 }
