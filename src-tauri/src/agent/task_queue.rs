@@ -9,3 +9,27 @@ pub enum AgentTask {
     /// ToolCall 代表 Agent 决定要调用一个工具了
     ToolCall { tool_name: String, payload: String },
 }
+
+#[derive(Clone, Default)]
+pub struct AgentTaskQueue {
+    inner: Arc<Mutex<VecDeque<AgentTask>>>,
+}
+
+impl AgentTaskQueue {
+    pub fn push(&self, task: AgentTask) -> Result<(), String> {
+        let mut tasks = self
+            .inner
+            .lock()
+            .map_err(|e| format!("Agent 任务队列加锁失败: {}", e))?;
+        tasks.push_back(task);
+        Ok(())
+    }
+
+    pub fn pop(&self) -> Result<Option<AgentTask>, String> {
+        let mut tasks = self
+            .inner
+            .lock()
+            .map_err(|e| format!("Agent 任务队列加锁失败: {}", e))?;
+        Ok(tasks.pop_front())
+    }
+}
