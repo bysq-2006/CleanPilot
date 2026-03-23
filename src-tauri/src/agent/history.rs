@@ -2,12 +2,14 @@ use super::system_prompt::SystemPromptManager;
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
 
+/// 给 LLM 的最终输入形状固定为 system + context，history 不应输出别的格式。
 #[derive(Debug, Clone, Serialize)]
 struct AgentHistoryLlmInput {
     system: String,
     context: Vec<AgentHistoryContextItem>,
 }
 
+/// context 内部目前只保留最小字段，后面扩展 tool_calls 时再加字段。
 #[derive(Debug, Clone, Serialize)]
 struct AgentHistoryContextItem {
     #[serde(rename = "type")]
@@ -29,6 +31,7 @@ pub struct AgentHistory {
 }
 
 impl AgentHistory {
+    /// history 内部只保存两类东西：system prompt manager 和非 system 的真实消息。
     pub fn new(system_prompt: SystemPromptManager) -> Self {
         Self {
             system_prompt: Arc::new(Mutex::new(system_prompt)),
@@ -36,6 +39,7 @@ impl AgentHistory {
         }
     }
 
+    /// 这里只负责追加真实会话消息，不允许把 system prompt 当成普通消息塞进来。
     pub fn append(&self, message: AgentMessage) -> Result<(), String> {
         let mut history = self
             .inner
@@ -55,19 +59,7 @@ impl AgentHistory {
         Ok(system_prompt.build())
     }
 
-    pub fn update_system_prompt<F>(&self, updater: F) -> Result<(), String>
-    where
-        F: FnOnce(&mut SystemPromptManager),
-    {
-        let mut system_prompt = self
-            .system_prompt
-            .lock()
-            .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
-
-        updater(&mut system_prompt);
-        Ok(())
-    }
-
+    /// 唯一正式导出接口：必须返回完整 JSON 字符串，供 LLM 直接消费。
     pub fn build_llm_input(&self) -> Result<String, String> {
         let system_prompt = self.get_system_prompt()?;
         let history = self

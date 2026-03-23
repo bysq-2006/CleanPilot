@@ -42,7 +42,7 @@ fn get_required_config(value: &str, key: &str) -> Result<String, String> {
     Ok(value)
 }
 
-/// 调用 DeepSeek 的 Chat Completions API
+/// provider 层只做字符串进/字符串出，不在这里理解 history 内部语义。
 pub async fn chat(history: &AgentHistory, config: &DeepseekConfig) -> Result<String, String> {
     let api_key = get_required_config(&config.api_key, "api_key")?;
     let model = config.model.trim().to_string();

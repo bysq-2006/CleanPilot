@@ -41,7 +41,7 @@ impl AgentRuntime {
         });
     }
 
-    /// 主要循环，负责轮询任务队列并执行任务
+    /// 主循环只消费 task queue，所有中间状态都落到 history，不直接面向前端输出。
     async fn run_loop(self) {
         loop {
             let next_task = self.tasks.pop().unwrap_or_else(|e| {
@@ -54,11 +54,5 @@ impl AgentRuntime {
                 None => sleep(Duration::from_millis(100)).await,
             }
         }
-    }
-
-    pub fn refresh_tool_prompt(&mut self) -> Result<(), String> {
-        self.history.update_system_prompt(|prompt| {
-            prompt.set_tool_prompt(self.tools.build_prompt());
-        })
     }
 }

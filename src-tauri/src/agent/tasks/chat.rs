@@ -2,10 +2,7 @@ use crate::agent::history::AgentMessage;
 use crate::agent::runtime::AgentRuntime;
 use crate::agent::task_queue::AgentTask;
 
-/// 处理用户问题任务，核心逻辑是：
-/// 1. 将用户问题追加到历史记录中
-/// 2. 基于当前历史记录调用 LLM 获取任务列表（不会对history 进行任何修改）
-/// 3. 将 LLM 返回的任务列表解析成 AgentTask 并入队
+/// 处理用户问题任务：先写入 user 消息，再把 LLM 原始输出交给 agent 侧解析器处理。
 pub async fn handle_user_question(runtime: &AgentRuntime, content: String) {
     if let Err(e) = runtime.history.append(AgentMessage {
         role: "user".to_string(),
@@ -24,8 +21,7 @@ pub async fn handle_user_question(runtime: &AgentRuntime, content: String) {
     println!("Agent 收到用户问题任务: {}", content);
 }
 
-/// 当 agent 需要等待工具的回答才能继续思考时，使用这个任务
-/// 这个任务的作用是：基于当前历史记录继续调用 LLM 获取新的任务列表，其他逻辑和 handle_user_question 基本一样
+/// 工具执行后继续请求 LLM，provider 仍然只返回原始字符串。
 pub async fn handle_continue_reply(runtime: &AgentRuntime) {
     request_and_enqueue_tasks(
         runtime,
@@ -61,6 +57,7 @@ fn enqueue_tasks(runtime: &AgentRuntime, tasks: Vec<AgentTask>, error_prefix: &s
     }
 }
 
+/// 解析 LLM 输出的任务列表，要求 LLM 输出必须符合预定格式，否则整个输出都废弃。
 pub fn parse_llm_tasks(raw: &str) -> Result<Vec<AgentTask>, String> {
     serde_json::from_str(raw).map_err(|e| {
         format!(
