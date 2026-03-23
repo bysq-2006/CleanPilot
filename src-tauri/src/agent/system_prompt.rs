@@ -47,12 +47,6 @@ impl SystemPromptManager {
         parts.join("\n\n")
     }
 
-    pub fn set_raw(&mut self, prompt: String) {
-        self.core_prompt = prompt;
-        self.tool_prompt.clear();
-        self.scene_prompt.clear();
-    }
-
     pub fn set_tool_prompt(&mut self, prompt: String) {
         self.tool_prompt = prompt;
     }

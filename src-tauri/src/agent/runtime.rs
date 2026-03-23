@@ -4,7 +4,6 @@
 use std::time::Duration;
 
 use super::history::AgentHistory;
-use super::system_prompt::SystemPromptManager;
 use super::tasks;
 use super::tasks::queue::AgentTaskQueue;
 use super::tools::ToolManager;
@@ -21,10 +20,13 @@ pub struct AgentRuntime {
 
 impl AgentRuntime {
     pub fn new(llm: LlmService) -> Self {
-        let mut system_prompt = SystemPromptManager::new();
         let tools = ToolManager::new();
-        system_prompt.set_tool_prompt(tools.build_prompt());
-        let history = AgentHistory::new(system_prompt.clone());
+        let history = AgentHistory::new();
+        history
+            .system_prompt
+            .lock()
+            .expect("初始化 Agent system prompt 锁失败")
+            .set_tool_prompt(tools.build_prompt());
 
         Self {
             history,

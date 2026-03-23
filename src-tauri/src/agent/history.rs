@@ -23,17 +23,17 @@ struct AgentHistoryContextItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentToolFunction {
+    pub name: String,
+    pub arguments: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentToolCall {
     pub id: String,
     #[serde(rename = "type")]
     pub call_type: String,
     pub function: AgentToolFunction,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AgentToolFunction {
-    pub name: String,
-    pub arguments: String,
 }
 
 /// 历史记录，注意，这里应当是队列中的其中一条的记录，而不是整个历史记录
@@ -56,9 +56,9 @@ pub struct AgentHistory {
 
 impl AgentHistory {
     /// history 内部只保存两类东西：system prompt manager 和非 system 的真实消息。
-    pub fn new(system_prompt: SystemPromptManager) -> Self {
+    pub fn new() -> Self {
         Self {
-            system_prompt: Arc::new(Mutex::new(system_prompt)),
+            system_prompt: Arc::new(Mutex::new(SystemPromptManager::new())),
             inner: Arc::new(Mutex::new(Vec::new())),
         }
     }
@@ -73,19 +73,13 @@ impl AgentHistory {
         Ok(())
     }
 
-    /// 获取系统提示词的完整内容
-    pub fn get_system_prompt(&self) -> Result<String, String> {
+    /// 唯一正式导出接口：必须返回完整 JSON 字符串，供 LLM 直接消费。
+    pub fn build_llm_input(&self) -> Result<String, String> {
         let system_prompt = self
             .system_prompt
             .lock()
-            .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
-
-        Ok(system_prompt.build())
-    }
-
-    /// 唯一正式导出接口：必须返回完整 JSON 字符串，供 LLM 直接消费。
-    pub fn build_llm_input(&self) -> Result<String, String> {
-        let system_prompt = self.get_system_prompt()?;
+            .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?
+            .build();
         let history = self
             .inner
             .lock()
