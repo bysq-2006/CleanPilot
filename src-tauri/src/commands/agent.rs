@@ -26,3 +26,13 @@ pub fn get_history(app: AppHandle, start_index: usize) -> Result<Vec<AgentMessag
 
     Ok(history[start_index..].to_vec())
 }
+
+#[tauri::command]
+pub fn debug_print_history(app: AppHandle) -> Result<(), String> {
+    let store = app.state::<AppStore>();
+    let history = store.agent.history.serialize_all()?;
+
+    println!("Agent 调试输出完整 history: {}", history);
+
+    Ok(())
+}
