@@ -20,7 +20,7 @@ pub struct AgentRuntime {
 
 impl AgentRuntime {
     pub fn new(llm: LlmService) -> Self {
-        let tools = ToolManager::new();
+        let tools = ToolManager::new("*");
         let history = AgentHistory::new();
         history
             .system_prompt

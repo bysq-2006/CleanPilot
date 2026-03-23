@@ -1,21 +1,31 @@
 use std::fs;
 use std::path::Path;
 
+use serde::Deserialize;
+
 use super::ToolDefinition;
+
+#[derive(Deserialize)]
+struct ListDirectoryArgs {
+    path: String,
+}
 
 pub fn register() -> ToolDefinition {
     ToolDefinition {
         name: "list_directory",
         description: "查看指定路径下一层文件和文件夹的详细信息，并返回文本结果。",
-        usage: "payload 直接传目录路径字符串，例如 D:/test 或 ./src",
+        usage: "arguments 传 JSON 字符串，例如 {\"path\":\"D:/test\"} 或 {\"path\":\"./src\"}",
         handler: call,
     }
 }
 
 fn call(payload: &str) -> Result<String, String> {
-    let path = Path::new(payload.trim());
+    let args: ListDirectoryArgs = serde_json::from_str(payload)
+        .map_err(|e| format!("参数解析失败: {}", e))?;
+    let path_str = args.path.trim();
+    let path = Path::new(path_str);
 
-    if payload.trim().is_empty() {
+    if path_str.is_empty() {
         return Err("目录路径不能为空".to_string());
     }
 

@@ -1,5 +1,7 @@
 mod list_directory;
 
+const ENABLE_ALL_TOOLS: &str = "*";
+
 #[derive(Clone)]
 pub struct ToolDefinition {
     pub name: &'static str,
@@ -14,10 +16,28 @@ pub struct ToolManager {
 }
 
 impl ToolManager {
-    pub fn new() -> Self {
-        Self {
-            tools: vec![list_directory::register()],
-        }
+    pub fn new(selection: &str) -> Self {
+        let all_tools = vec![list_directory::register()];
+        let selection = selection.trim();
+
+        let tools = if selection.is_empty() {
+            Vec::new()
+        } else if selection == ENABLE_ALL_TOOLS {
+            all_tools
+        } else {
+            let enabled_names = selection
+                .split(',')
+                .map(|item| item.trim())
+                .filter(|item| !item.is_empty())
+                .collect::<Vec<_>>();
+
+            all_tools
+                .into_iter()
+                .filter(|tool| enabled_names.iter().any(|name| *name == tool.name))
+                .collect()
+        };
+
+        Self { tools }
     }
 
     pub fn build_prompt(&self) -> String {
