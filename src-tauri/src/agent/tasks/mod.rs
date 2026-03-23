@@ -14,7 +14,7 @@ pub async fn handle_task(runtime: &AgentRuntime, task: AgentTask) {
         AgentTask::AssistantReply { content } => {
             reply::handle_assistant_reply(runtime, content);
         }
-        AgentTask::ToolCall { tool_name, payload } => {
+        AgentTask::ToolCall { tool_call_id, tool_name, payload } => {
             println!("Agent 收到工具调用任务: {}, payload={}", tool_name, payload);
 
             let result = runtime.tools.call(&tool_name, &payload);
@@ -32,12 +32,14 @@ pub async fn handle_task(runtime: &AgentRuntime, task: AgentTask) {
 
             if let Err(e) = runtime.history.append(AgentMessage {
                 role: "tool".to_string(),
-                content,
+                content: Some(content),
+                tool_calls: None,
+                tool_call_id: Some(tool_call_id),
             }) {
                 eprintln!("Agent 写入工具结果失败: {}", e);
             }
         }
-        AgentTask::ContinueReply => {
+        AgentTask::RunAgentLoop => {
             chat::handle_continue_reply(runtime).await;
         }
     }

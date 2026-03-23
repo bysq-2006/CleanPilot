@@ -5,16 +5,15 @@ use serde::Deserialize;
 
 /// 任务列表，这里应当是队列中的其中一条的记录，而不是整个历史记录
 #[derive(Debug, Clone, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
 pub enum AgentTask {
     /// UserQuestion 代表用户输入的一个问题，Agent 需要根据这个问题去思考下一步要调用哪个工具，或者直接回答
     UserQuestion { content: String },
     /// AssistantReply 代表一条需要写入历史记录的用户可见回复
     AssistantReply { content: String },
     /// ToolCall 代表 Agent 决定要调用一个工具了
-    ToolCall { tool_name: String, payload: String },
-    /// ContinueReply 代表基于当前历史继续请求 LLM 生成新的任务列表
-    ContinueReply,
+    ToolCall { tool_call_id: String, tool_name: String, payload: String },
+    /// RunAgentLoop 代表基于当前历史继续请求一轮 LLM，直到 assistant 不再要求工具。
+    RunAgentLoop,
 }
 
 #[derive(Clone, Default)]

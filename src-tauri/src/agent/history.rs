@@ -1,5 +1,5 @@
 use super::system_prompt::SystemPromptManager;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
 /// 给 LLM 的最终输入形状固定为 system + context，history 不应输出别的格式。
@@ -14,14 +14,38 @@ struct AgentHistoryLlmInput {
 struct AgentHistoryContextItem {
     #[serde(rename = "type")]
     message_type: String,
-    content: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_calls: Option<Vec<AgentToolCall>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_call_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentToolCall {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub call_type: String,
+    pub function: AgentToolFunction,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentToolFunction {
+    pub name: String,
+    pub arguments: String,
 }
 
 /// 历史记录，注意，这里应当是队列中的其中一条的记录，而不是整个历史记录
 #[derive(Debug, Clone, Serialize)]
 pub struct AgentMessage {
     pub role: String,
-    pub content: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<AgentToolCall>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
 }
 
 #[derive(Clone)]
@@ -74,6 +98,8 @@ impl AgentHistory {
                 .map(|message| AgentHistoryContextItem {
                     message_type: message.role.clone(),
                     content: message.content.clone(),
+                    tool_calls: message.tool_calls.clone(),
+                    tool_call_id: message.tool_call_id.clone(),
                 })
                 .collect(),
         };

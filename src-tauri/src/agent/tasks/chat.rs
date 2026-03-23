@@ -1,12 +1,23 @@
-use crate::agent::history::AgentMessage;
+use crate::agent::history::{AgentMessage, AgentToolCall};
 use crate::agent::runtime::AgentRuntime;
 use crate::agent::task_queue::AgentTask;
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize)]
+struct AgentAssistantMessage {
+    #[serde(rename = "type")]
+    message_type: String,
+    content: Option<String>,
+    tool_calls: Option<Vec<AgentToolCall>>,
+}
 
 /// 处理用户问题任务：先写入 user 消息，再把 LLM 原始输出交给 agent 侧解析器处理。
 pub async fn handle_user_question(runtime: &AgentRuntime, content: String) {
     if let Err(e) = runtime.history.append(AgentMessage {
         role: "user".to_string(),
-        content: content.clone(),
+        content: Some(content.clone()),
+        tool_calls: None,
+        tool_call_id: None,
     }) {
         eprintln!("Agent 写入历史记录失败: {}", e);
     }
@@ -57,13 +68,39 @@ fn enqueue_tasks(runtime: &AgentRuntime, tasks: Vec<AgentTask>, error_prefix: &s
     }
 }
 
-/// 解析 LLM 输出的任务列表，要求 LLM 输出必须符合预定格式，否则整个输出都废弃。
+/// 解析标准 assistant 消息；如果存在 tool_calls，则工具执行完后再触发下一轮。
 pub fn parse_llm_tasks(raw: &str) -> Result<Vec<AgentTask>, String> {
-    serde_json::from_str(raw).map_err(|e| {
+    let message: AgentAssistantMessage = serde_json::from_str(raw).map_err(|e| {
         format!(
-            "LLM 返回任务列表解析失败: {}\n原始输出: {}",
+            "LLM 返回 assistant 消息解析失败: {}\n原始输出: {}",
             e, raw
         )
-    })
+    })?;
+
+    if message.message_type != "assistant" {
+        return Err(format!("LLM 返回的 type 不是 assistant: {}", message.message_type));
+    }
+
+    let mut tasks = Vec::new();
+
+    if let Some(content) = message.content {
+        if !content.trim().is_empty() {
+            tasks.push(AgentTask::AssistantReply { content });
+        }
+    }
+
+    if let Some(tool_calls) = message.tool_calls {
+        for tool_call in tool_calls {
+            tasks.push(AgentTask::ToolCall {
+                tool_call_id: tool_call.id,
+                tool_name: tool_call.function.name,
+                payload: tool_call.function.arguments,
+            });
+        }
+
+        tasks.push(AgentTask::RunAgentLoop);
+    }
+
+    Ok(tasks)
 }
 
