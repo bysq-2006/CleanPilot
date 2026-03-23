@@ -9,6 +9,4 @@ pub fn handle_assistant_reply(runtime: &AgentRuntime, content: String) {
         eprintln!("Agent 写入 Assistant 历史失败: {}", e);
         return;
     }
-
-    println!("Agent 回复用户问题: {}", content);
 }

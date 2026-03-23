@@ -56,11 +56,13 @@ impl AgentHistory {
             .lock()
             .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
 
-        history
-            .iter()
-            .find(|message| matches!(message.role, AgentMessageRole::System))
-            .map(|message| message.content.clone())
-            .ok_or_else(|| "Agent 系统提示词不存在".to_string())
+        match history.first() {
+            Some(AgentMessage {
+                role: AgentMessageRole::System,
+                content,
+            }) => Ok(content.clone()),
+            _ => Err("Agent 系统提示词不存在".to_string()),
+        }
     }
 
     pub fn set_system_prompt(&self, prompt: String) -> Result<(), String> {
@@ -69,21 +71,19 @@ impl AgentHistory {
             .lock()
             .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
 
-        if let Some(message) = history
-            .iter_mut()
-            .find(|message| matches!(message.role, AgentMessageRole::System))
-        {
-            message.content = prompt;
-            return Ok(());
-        }
-
-        history.insert(
-            0,
-            AgentMessage {
+        match history.first_mut() {
+            Some(AgentMessage {
                 role: AgentMessageRole::System,
-                content: prompt,
-            },
-        );
+                content,
+            }) => *content = prompt,
+            _ => history.insert(
+                0,
+                AgentMessage {
+                    role: AgentMessageRole::System,
+                    content: prompt,
+                },
+            ),
+        }
 
         Ok(())
     }
