@@ -1,7 +1,7 @@
 use tauri::{AppHandle, Manager};
 
 use crate::agent::history::AgentMessage;
-use crate::agent::task_queue::AgentTask;
+use crate::agent::tasks::queue::AgentTask;
 use crate::models::appstore::AppStore;
 
 #[tauri::command]

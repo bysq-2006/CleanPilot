@@ -12,8 +12,6 @@ pub enum AgentTask {
     AssistantReply { content: String },
     /// ToolCall 代表 Agent 决定要调用一个工具了
     ToolCall { tool_call_id: String, tool_name: String, payload: String },
-    /// RunAgentLoop 代表基于当前历史继续请求一轮 LLM，直到 assistant 不再要求工具。
-    RunAgentLoop,
 }
 
 #[derive(Clone, Default)]

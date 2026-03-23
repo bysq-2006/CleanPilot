@@ -1,8 +1,9 @@
 use super::runtime::AgentRuntime;
-use super::task_queue::AgentTask;
+use super::tasks::queue::AgentTask;
 use crate::agent::history::AgentMessage;
 
 pub mod chat;
+pub mod queue;
 pub mod reply;
 
 pub async fn handle_task(runtime: &AgentRuntime, task: AgentTask) {
@@ -37,9 +38,9 @@ pub async fn handle_task(runtime: &AgentRuntime, task: AgentTask) {
                 tool_call_id: Some(tool_call_id),
             }) {
                 eprintln!("Agent 写入工具结果失败: {}", e);
+                return;
             }
-        }
-        AgentTask::RunAgentLoop => {
+
             chat::handle_continue_reply(runtime).await;
         }
     }

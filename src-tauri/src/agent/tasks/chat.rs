@@ -1,6 +1,6 @@
 use crate::agent::history::{AgentMessage, AgentToolCall};
 use crate::agent::runtime::AgentRuntime;
-use crate::agent::task_queue::AgentTask;
+use crate::agent::tasks::queue::AgentTask;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -97,8 +97,6 @@ pub fn parse_llm_tasks(raw: &str) -> Result<Vec<AgentTask>, String> {
                 payload: tool_call.function.arguments,
             });
         }
-
-        tasks.push(AgentTask::RunAgentLoop);
     }
 
     Ok(tasks)

@@ -6,7 +6,7 @@ use std::time::Duration;
 use super::history::AgentHistory;
 use super::system_prompt::SystemPromptManager;
 use super::tasks;
-use super::task_queue::AgentTaskQueue;
+use super::tasks::queue::AgentTaskQueue;
 use super::tools::ToolManager;
 use crate::llm::LlmService;
 use tokio::time::sleep;
