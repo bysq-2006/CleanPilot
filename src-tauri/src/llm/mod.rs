@@ -2,7 +2,7 @@ pub mod providers;
 
 use std::sync::{Arc, Mutex};
 
-use crate::agent::history::AgentMessage;
+use crate::agent::history::AgentHistory;
 use crate::models::config::Config;
 use crate::models::llm_config::LlmProvider;
 
@@ -17,7 +17,7 @@ impl LlmService {
     }
 
     /// 基于当前内部配置调用聊天接口
-    pub async fn chat(&self, messages: &[AgentMessage]) -> Result<String, String> {
+    pub async fn chat(&self, history: &AgentHistory) -> Result<String, String> {
         let llm_config = self
             .config
             .lock()
@@ -26,7 +26,7 @@ impl LlmService {
             .clone();
 
         match llm_config.current_provider {
-            LlmProvider::Deepseek => providers::deepseek::chat(messages, &llm_config.deepseek).await,
+            LlmProvider::Deepseek => providers::deepseek::chat(history, &llm_config.deepseek).await,
         }
     }
 }

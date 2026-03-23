@@ -1,6 +1,6 @@
 use super::runtime::AgentRuntime;
 use super::task_queue::AgentTask;
-use crate::agent::history::{AgentMessage, AgentMessageRole};
+use crate::agent::history::AgentMessage;
 
 pub mod chat;
 pub mod reply;
@@ -31,7 +31,7 @@ pub async fn handle_task(runtime: &AgentRuntime, task: AgentTask) {
             };
 
             if let Err(e) = runtime.history.append(AgentMessage {
-                role: AgentMessageRole::Assistant,
+                role: "tool".to_string(),
                 content,
             }) {
                 eprintln!("Agent 写入工具结果失败: {}", e);

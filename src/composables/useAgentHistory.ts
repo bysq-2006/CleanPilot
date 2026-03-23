@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
-export type AgentMessageRole = 'system' | 'user' | 'assistant'
+export type AgentMessageRole = 'system' | 'user' | 'assistant' | 'tool'
 
 export interface AgentMessage {
   role: AgentMessageRole

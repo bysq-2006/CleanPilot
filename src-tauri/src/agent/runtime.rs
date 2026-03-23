@@ -16,7 +16,6 @@ pub struct AgentRuntime {
     pub history: AgentHistory,
     pub tasks: AgentTaskQueue,
     pub llm: LlmService,
-    pub system_prompt: SystemPromptManager,
     pub tools: ToolManager,
 }
 
@@ -25,13 +24,12 @@ impl AgentRuntime {
         let mut system_prompt = SystemPromptManager::new();
         let tools = ToolManager::new();
         system_prompt.set_tool_prompt(tools.build_prompt());
-        let history = AgentHistory::new(system_prompt.build());
+        let history = AgentHistory::new(system_prompt.clone());
 
         Self {
             history,
             tasks: AgentTaskQueue::default(),
             llm,
-            system_prompt,
             tools,
         }
     }
@@ -59,7 +57,8 @@ impl AgentRuntime {
     }
 
     pub fn refresh_tool_prompt(&mut self) -> Result<(), String> {
-        self.system_prompt.set_tool_prompt(self.tools.build_prompt());
-        self.history.set_system_prompt(self.system_prompt.build())
+        self.history.update_system_prompt(|prompt| {
+            prompt.set_tool_prompt(self.tools.build_prompt());
+        })
     }
 }

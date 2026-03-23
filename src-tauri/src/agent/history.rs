@@ -1,43 +1,38 @@
+use super::system_prompt::SystemPromptManager;
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Serialize)]
-pub enum AgentMessageRole {
-    System,
-    User,
-    Assistant,
+struct AgentHistoryLlmInput {
+    system: String,
+    context: Vec<AgentHistoryContextItem>,
 }
 
-impl AgentMessageRole {
-    #[allow(dead_code)]
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::System => "system",
-            Self::User => "user",
-            Self::Assistant => "assistant",
-        }
-    }
+#[derive(Debug, Clone, Serialize)]
+struct AgentHistoryContextItem {
+    #[serde(rename = "type")]
+    message_type: String,
+    content: String,
 }
 
 /// 历史记录，注意，这里应当是队列中的其中一条的记录，而不是整个历史记录
 #[derive(Debug, Clone, Serialize)]
 pub struct AgentMessage {
-    pub role: AgentMessageRole,
+    pub role: String,
     pub content: String,
 }
 
 #[derive(Clone)]
 pub struct AgentHistory {
+    pub system_prompt: Arc<Mutex<SystemPromptManager>>,
     pub inner: Arc<Mutex<Vec<AgentMessage>>>,
 }
 
 impl AgentHistory {
-    pub fn new(system_prompt: String) -> Self {
+    pub fn new(system_prompt: SystemPromptManager) -> Self {
         Self {
-            inner: Arc::new(Mutex::new(vec![AgentMessage {
-                role: AgentMessageRole::System,
-                content: system_prompt,
-            }])),
+            system_prompt: Arc::new(Mutex::new(system_prompt)),
+            inner: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -50,76 +45,49 @@ impl AgentHistory {
         Ok(())
     }
 
+    /// 获取系统提示词的完整内容
     pub fn get_system_prompt(&self) -> Result<String, String> {
-        let history = self
-            .inner
+        let system_prompt = self
+            .system_prompt
             .lock()
             .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
 
-        match history.first() {
-            Some(AgentMessage {
-                role: AgentMessageRole::System,
-                content,
-            }) => Ok(content.clone()),
-            _ => Err("Agent 系统提示词不存在".to_string()),
-        }
+        Ok(system_prompt.build())
     }
 
-    pub fn set_system_prompt(&self, prompt: String) -> Result<(), String> {
-        let mut history = self
-            .inner
+    pub fn update_system_prompt<F>(&self, updater: F) -> Result<(), String>
+    where
+        F: FnOnce(&mut SystemPromptManager),
+    {
+        let mut system_prompt = self
+            .system_prompt
             .lock()
             .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
 
-        match history.first_mut() {
-            Some(AgentMessage {
-                role: AgentMessageRole::System,
-                content,
-            }) => *content = prompt,
-            _ => history.insert(
-                0,
-                AgentMessage {
-                    role: AgentMessageRole::System,
-                    content: prompt,
-                },
-            ),
-        }
-
+        updater(&mut system_prompt);
         Ok(())
     }
 
-    /// 将本身的历史记录序列化成字符串，方便调试或者传输
-    #[allow(dead_code)]
-    pub fn serialize_all(&self) -> Result<String, String> {
+    pub fn build_llm_input(&self) -> Result<String, String> {
+        let system_prompt = self.get_system_prompt()?;
         let history = self
             .inner
             .lock()
             .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
 
-        Ok(Self::serialize_messages(&history))
+        let payload = AgentHistoryLlmInput {
+            system: system_prompt,
+            context: history
+                .iter()
+                .map(|message| AgentHistoryContextItem {
+                    message_type: message.role.clone(),
+                    content: message.content.clone(),
+                })
+                .collect(),
+        };
+
+        serde_json::to_string_pretty(&payload)
+            .map_err(|e| format!("Agent LLM 输入序列化失败: {}", e))
     }
 
-    /// 将多条消息序列化成字符串，方便调试或者传输
-    #[allow(dead_code)]
-    pub fn serialize_messages(messages: &[AgentMessage]) -> String {
-        let serialized_items = messages
-            .iter()
-            .map(Self::serialize_message)
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        format!("[{}]", serialized_items)
-    }
-
-    /// 将单条消息序列化成字符串，方便调试或者传输
-    #[allow(dead_code)]
-    pub fn serialize_message(message: &AgentMessage) -> String {
-        format!(
-            "{{\"role\": \"{}\", \"content\": \"{}\"}}",
-            message.role.as_str(),
-            message.content.replace('"', "\\\"")
-        )
-    }
 }
-
-

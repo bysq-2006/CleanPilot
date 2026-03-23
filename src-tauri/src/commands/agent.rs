@@ -30,7 +30,7 @@ pub fn get_history(app: AppHandle, start_index: usize) -> Result<Vec<AgentMessag
 #[tauri::command]
 pub fn debug_print_history(app: AppHandle) -> Result<(), String> {
     let store = app.state::<AppStore>();
-    let history = store.agent.history.serialize_all()?;
+    let history = store.agent.history.build_llm_input()?;
 
     println!("Agent 调试输出完整 history: {}", history);
 

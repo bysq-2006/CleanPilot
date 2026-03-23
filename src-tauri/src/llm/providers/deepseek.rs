@@ -1,4 +1,4 @@
-use crate::agent::history::{AgentMessage, AgentMessageRole};
+use crate::agent::history::AgentHistory;
 use crate::models::llm_config::DeepseekConfig;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
@@ -43,27 +43,21 @@ fn get_required_config(value: &str, key: &str) -> Result<String, String> {
 }
 
 /// 调用 DeepSeek 的 Chat Completions API
-pub async fn chat(messages: &[AgentMessage], config: &DeepseekConfig) -> Result<String, String> {
+pub async fn chat(history: &AgentHistory, config: &DeepseekConfig) -> Result<String, String> {
     let api_key = get_required_config(&config.api_key, "api_key")?;
     let model = config.model.trim().to_string();
     let base_url = config.base_url.trim().to_string();
+    let llm_input = history.build_llm_input()?;
 
     let endpoint = format!("{}/chat/completions", base_url.trim_end_matches('/'));
 
     let client = reqwest::Client::new();
     let req_body = DeepSeekRequest {
         model: model.clone(),
-        messages: messages
-            .iter()
-            .map(|message| DeepSeekMessage {
-                role: match message.role {
-                    AgentMessageRole::System => "system".to_string(),
-                    AgentMessageRole::User => "user".to_string(),
-                    AgentMessageRole::Assistant => "assistant".to_string(),
-                },
-                content: message.content.clone(),
-            })
-            .collect(),
+        messages: vec![DeepSeekMessage {
+            role: "user".to_string(),
+            content: llm_input,
+        }],
     };
 
     let response = client

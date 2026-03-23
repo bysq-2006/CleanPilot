@@ -19,6 +19,7 @@ const roleLabelMap = {
   system: '系统',
   user: '我',
   assistant: '助手',
+  tool: '工具',
 } as const
 </script>
 
@@ -50,9 +51,19 @@ const roleLabelMap = {
   border-style: dashed;
 }
 
+.message-item--tool {
+  align-self: flex-start;
+  background-color: #fffbeb;
+  border-color: #fcd34d;
+}
+
 .message-role {
   font-size: 0.75rem;
   color: #64748b;
+}
+
+.message-item--tool .message-role {
+  color: #92400e;
 }
 
 .message-content {
