@@ -1,20 +1,34 @@
 use tauri::{AppHandle, Manager};
 
-use crate::agent::history::AgentMessage;
+use crate::agent::context::history::AgentMessage;
 use crate::agent::tasks::queue::AgentTask;
 use crate::models::appstore::AppStore;
 
 #[tauri::command]
 pub fn chat(app: AppHandle, content: String) -> Result<(), String> {
     let store = app.state::<AppStore>();
-    store.agent.tasks.push(AgentTask::UserQuestion { content })
+    let agent = store
+        .agent
+        .lock()
+        .map_err(|e| format!("Agent 锁获取失败: {}", e))?;
+
+    agent
+        .as_ref()
+        .ok_or_else(|| "Agent 尚未初始化".to_string())?
+        .tasks
+        .push(AgentTask::UserQuestion { content })
 }
 
 #[tauri::command]
 pub fn get_history(app: AppHandle, start_index: usize) -> Result<Vec<AgentMessage>, String> {
     let store = app.state::<AppStore>();
-    let history = store
+    let agent = store
         .agent
+        .lock()
+        .map_err(|e| format!("Agent 锁获取失败: {}", e))?;
+    let history = agent
+        .as_ref()
+        .ok_or_else(|| "Agent 尚未初始化".to_string())?
         .history
         .inner
         .lock()
@@ -30,7 +44,15 @@ pub fn get_history(app: AppHandle, start_index: usize) -> Result<Vec<AgentMessag
 #[tauri::command]
 pub fn debug_print_history(app: AppHandle) -> Result<(), String> {
     let store = app.state::<AppStore>();
-    let history = store.agent.history.build_llm_input()?;
+    let agent = store
+        .agent
+        .lock()
+        .map_err(|e| format!("Agent 锁获取失败: {}", e))?;
+    let history = agent
+        .as_ref()
+        .ok_or_else(|| "Agent 尚未初始化".to_string())?
+        .history
+        .build_llm_input()?;
 
     println!("Agent 调试输出完整 history: {}", history);
 

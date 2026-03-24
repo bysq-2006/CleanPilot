@@ -1,17 +1,20 @@
 <template>
   <div
+    v-if="displayContent"
     class="message-item"
     :class="[`message-item--${message.role}`]"
   >
     <span class="message-role">{{ roleLabelMap[message.role] }}</span>
-    <p class="message-content">{{ message.content }}</p>
+    <p class="message-content">{{ displayContent }}</p>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import type { AgentMessage } from '../../composables/useAgentHistory'
 
-defineProps<{
+const props = defineProps<{
   message: AgentMessage
 }>()
 
@@ -21,6 +24,22 @@ const roleLabelMap = {
   assistant: '助手',
   tool: '工具',
 } as const
+
+const displayContent = computed(() => {
+  if (props.message.content && props.message.content.trim()) {
+    return props.message.content
+  }
+
+  if (props.message.tool_calls?.length) {
+    return JSON.stringify(props.message.tool_calls, null, 2)
+  }
+
+  if (props.message.tool_call_id) {
+    return `tool_call_id: ${props.message.tool_call_id}`
+  }
+
+  return ''
+})
 </script>
 
 <style scoped>

@@ -1,4 +1,4 @@
-use crate::agent::history::AgentMessage;
+use crate::agent::context::history::AgentMessage;
 use crate::agent::runtime::AgentRuntime;
 
 pub fn handle_assistant_reply(runtime: &AgentRuntime, content: String) {

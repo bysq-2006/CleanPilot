@@ -9,11 +9,14 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import ChatComposer from '../components/ChatComposer.vue'
 import ChatHistoryList from '../components/chat-history/ChatHistoryList.vue'
-import { useAgentHistory } from '../composables/useAgentHistory'
+import { agentHistoryStore } from '../composables/useAgentHistory'
 
-const { messages, syncError } = useAgentHistory()
+const messages = computed(() => agentHistoryStore.history.value)
+const syncError = computed(() => agentHistoryStore.syncError.value)
 </script>
 
 <style scoped>

@@ -1,6 +1,5 @@
 mod agent;
 mod commands;
-mod llm;
 mod models;
 mod utils;
 
@@ -14,13 +13,23 @@ pub fn run() {
         .setup(|app| {
             let app_handle = app.handle().clone();
             let store = app.state::<AppStore>();
-            store.agent.start();
             let mut config = store
                 .config
                 .lock()
                 .map_err(|e| format!("配置锁获取失败: {}", e))?;
 
             config.init(&app_handle)?;
+            drop(config);
+
+            store.init_agent()?;
+            let agent = store
+                .agent
+                .lock()
+                .map_err(|e| format!("Agent 锁获取失败: {}", e))?;
+            agent
+                .as_ref()
+                .ok_or_else(|| "Agent 初始化失败".to_string())?
+                .start();
 
             Ok(())
         })

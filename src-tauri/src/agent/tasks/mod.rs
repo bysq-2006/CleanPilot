@@ -1,6 +1,6 @@
 use super::runtime::AgentRuntime;
 use super::tasks::queue::AgentTask;
-use crate::agent::history::AgentMessage;
+use crate::agent::context::history::AgentMessage;
 
 pub mod chat;
 pub mod queue;

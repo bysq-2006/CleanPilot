@@ -3,23 +3,25 @@
 /// 而这一层就是要根据match去调用不同的任务文件里的函数
 use std::time::Duration;
 
-use super::history::AgentHistory;
+use super::context::history::AgentHistory;
+use super::llm::AgentLlm;
 use super::tasks;
 use super::tasks::queue::AgentTaskQueue;
 use super::tools::ToolManager;
-use crate::llm::LlmService;
+use crate::models::config::Config;
+use std::sync::{Arc, Mutex};
 use tokio::time::sleep;
 
 #[derive(Clone)]
 pub struct AgentRuntime {
     pub history: AgentHistory,
     pub tasks: AgentTaskQueue,
-    pub llm: LlmService,
+    pub llm: AgentLlm,
     pub tools: ToolManager,
 }
 
 impl AgentRuntime {
-    pub fn new(llm: LlmService) -> Self {
+    pub fn new(config: Arc<Mutex<Config>>) -> Self {
         let tools = ToolManager::new("*");
         let history = AgentHistory::new();
         history
@@ -31,7 +33,7 @@ impl AgentRuntime {
         Self {
             history,
             tasks: AgentTaskQueue::default(),
-            llm,
+            llm: AgentLlm::new(config),
             tools,
         }
     }

@@ -1,4 +1,4 @@
-use crate::agent::history::{AgentMessage, AgentToolCall};
+use crate::agent::context::history::{AgentMessage, AgentToolCall};
 use crate::agent::runtime::AgentRuntime;
 use crate::agent::tasks::queue::AgentTask;
 use serde::Deserialize;
