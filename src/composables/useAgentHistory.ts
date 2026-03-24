@@ -1,92 +1,140 @@
 import { invoke } from '@tauri-apps/api/core'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { ref } from 'vue'
 
 export type AgentMessageRole = 'system' | 'user' | 'assistant' | 'tool'
 
+export interface AgentToolFunction {
+  name: string
+  arguments: string
+}
+
+export interface AgentToolCall {
+  id: string
+  type: string
+  function: AgentToolFunction
+}
+
 export interface AgentMessage {
   role: AgentMessageRole
-  content: string
+  content?: string | null
+  tool_calls?: AgentToolCall[] | null
+  tool_call_id?: string | null
 }
 
-const messages = ref<AgentMessage[]>([])
-const isPolling = ref(false)
-const syncError = ref<string | null>(null)
+type HistorySyncState = 'idle' | 'active'
 
-let pollingTimer: number | null = null
-let activeConsumers = 0
-let isSyncing = false
+const idleIntervalMs = 600
+const activeIntervalMs = 80
+const activeTimeoutMs = 1000
 
-const pollIntervalMs = 1200
+class AgentHistoryStore {
+  history = ref<AgentMessage[]>([])
+  index = ref(0)
+  state = ref<HistorySyncState>('idle')
+  syncError = ref<string | null>(null)
+  isPolling = ref(false)
 
-async function syncHistory() {
-  if (isSyncing) return
+  private timer: number | null = null
+  private isSyncing = false
+  private activeUntil = 0
 
-  isSyncing = true
+  constructor() {
+    this.start()
+  }
 
-  try {
-    const history = await invoke<AgentMessage[]>('get_history', {
-      startIndex: messages.value.length,
-    })
+  /** 根据当前状态决定下一次同步间隔。 */
+  private getInterval() {
+    return this.state.value === 'active' ? activeIntervalMs : idleIntervalMs
+  }
 
-    if (history.length > 0) {
-      messages.value = [...messages.value, ...history]
+  /** 按“1000ms 内是否出现新增项”规则回写轮询状态。 */
+  private updateStateByTime(now = Date.now()) {
+    this.state.value = now < this.activeUntil ? 'active' : 'idle'
+  }
+
+  /** 采用串行 setTimeout，确保一次同步完成后再调度下一次。 */
+  private scheduleNextTick() {
+    if (!this.isPolling.value) return
+
+    this.updateStateByTime()
+
+    this.timer = window.setTimeout(() => {
+      void this.tick()
+    }, this.getInterval())
+  }
+
+  /**
+   * 从尾部对齐 history：
+   * - 0 条：不处理
+   * - 1 条：仅覆盖最后一项
+   * - 多条：覆盖最后一项并追加真正新增项
+   */
+  private mergeHistory(incoming: AgentMessage[]) {
+    if (incoming.length === 0) return false
+
+    if (this.history.value.length === 0) {
+      this.history.value = incoming
+      this.index.value = this.history.value.length === 0 ? 0 : this.history.value.length - 1
+      return true
     }
 
-    syncError.value = null
-  }
-  catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    syncError.value = message
-  }
-  finally {
-    isSyncing = false
-  }
-}
-
-function clearPollingTimer() {
-  if (pollingTimer !== null) {
-    window.clearInterval(pollingTimer)
-    pollingTimer = null
-  }
-}
-
-function startPolling() {
-  if (pollingTimer !== null) return
-
-  isPolling.value = true
-  void syncHistory()
-
-  pollingTimer = window.setInterval(() => {
-    void syncHistory()
-  }, pollIntervalMs)
-}
-
-function stopPolling() {
-  clearPollingTimer()
-  isPolling.value = false
-}
-
-export function useAgentHistory() {
-  onMounted(() => {
-    activeConsumers += 1
-
-    if (activeConsumers === 1) {
-      startPolling()
+    if (incoming.length === 1) {
+      this.history.value = [...this.history.value.slice(0, -1), incoming[0]]
+      this.index.value = this.history.value.length - 1
+      return false
     }
-  })
 
-  onBeforeUnmount(() => {
-    activeConsumers = Math.max(0, activeConsumers - 1)
+    this.history.value = [...this.history.value.slice(0, -1), ...incoming]
+    this.index.value = this.history.value.length - 1
+    return true
+  }
 
-    if (activeConsumers === 0) {
-      stopPolling()
+  /** 执行一次同步，并在有新增项时把状态切到 active 窗口内。 */
+  async tick() {
+    if (this.isSyncing) return
+
+    this.isSyncing = true
+
+    try {
+      const incoming = await invoke<AgentMessage[]>('get_history', {
+        startIndex: this.index.value,
+      })
+
+      const hasNewItem = this.mergeHistory(incoming)
+
+      if (hasNewItem) {
+        this.activeUntil = Date.now() + activeTimeoutMs
+      }
+
+      this.syncError.value = null
     }
-  })
+    catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      this.syncError.value = message
+    }
+    finally {
+      this.isSyncing = false
+      this.scheduleNextTick()
+    }
+  }
 
-  return {
-    messages: computed(() => messages.value),
-    isPolling: computed(() => isPolling.value),
-    syncError: computed(() => syncError.value),
-    syncHistory,
+  /** 启动内部轮询器；实例创建后会自动调用一次。 */
+  start() {
+    if (this.isPolling.value) return
+
+    this.isPolling.value = true
+    void this.tick()
+  }
+
+  /** 停止内部轮询器并清理定时器。 */
+  stop() {
+    this.isPolling.value = false
+
+    if (this.timer !== null) {
+      window.clearTimeout(this.timer)
+      this.timer = null
+    }
   }
 }
+
+export const agentHistoryStore = new AgentHistoryStore()
