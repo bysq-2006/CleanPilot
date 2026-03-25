@@ -27,7 +27,7 @@ const idleIntervalMs = 600
 const activeIntervalMs = 20
 const activeTimeoutMs = 1000
 
-class AgentHistoryStore {
+export class AgentHistoryStore {
   history = ref<AgentMessage[]>([])
   index = ref(0)
   state = ref<HistorySyncState>('idle')
@@ -63,33 +63,27 @@ class AgentHistoryStore {
     }, this.getInterval())
   }
 
-  /**
-   * 从尾部对齐 history：
-   * - 0 条：不处理
-   * - 1 条：仅覆盖最后一项
-   * - 多条：覆盖最后一项并追加真正新增项
-   */
+  /** 从尾部对齐 history：0 条不处理；其余按“覆盖最后一项 + 追加新增项”处理。 */
   private mergeHistory(incoming: AgentMessage[]) {
-    if (incoming.length === 0) return false
+    if (incoming.length === 0) return
 
     if (this.history.value.length === 0) {
       this.history.value = incoming
       this.index.value = this.history.value.length === 0 ? 0 : this.history.value.length - 1
-      return true
+      return
     }
 
     if (incoming.length === 1) {
       this.history.value = [...this.history.value.slice(0, -1), incoming[0]]
       this.index.value = this.history.value.length - 1
-      return false
+      return
     }
 
     this.history.value = [...this.history.value.slice(0, -1), ...incoming]
     this.index.value = this.history.value.length - 1
-    return true
   }
 
-  /** 执行一次同步，并在有新增项时把状态切到 active 窗口内。 */
+  /** 执行一次同步：只要本次有消息就刷新 active 窗口；无消息则按超时回到 idle。 */
   async tick() {
     if (this.isSyncing) return
 
@@ -100,9 +94,9 @@ class AgentHistoryStore {
         startIndex: this.index.value,
       })
 
-      const hasNewItem = this.mergeHistory(incoming)
+      this.mergeHistory(incoming)
 
-      if (hasNewItem) {
+      if (incoming.length > 0) {
         this.activeUntil = Date.now() + activeTimeoutMs
       }
 
@@ -136,5 +130,3 @@ class AgentHistoryStore {
     }
   }
 }
-
-export const agentHistoryStore = new AgentHistoryStore()

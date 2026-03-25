@@ -13,7 +13,9 @@ import { computed } from 'vue'
 
 import ChatComposer from '../components/ChatComposer.vue'
 import ChatHistoryList from '../components/chat-history/ChatHistoryList.vue'
-import { agentHistoryStore } from '../composables/useAgentHistory'
+import { AgentHistoryStore } from '../composables/useAgentHistory'
+
+const agentHistoryStore = new AgentHistoryStore()
 
 const messages = computed(() => agentHistoryStore.history.value)
 const syncError = computed(() => agentHistoryStore.syncError.value)

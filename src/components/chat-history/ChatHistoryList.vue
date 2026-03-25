@@ -1,3 +1,4 @@
+<!-- 这整个vue是一个长页面，没滚动条的，要在外面加 -->
 <template>
   <div class="history-panel">
     <div class="message-list">
@@ -29,7 +30,9 @@
 import { computed } from 'vue'
 
 import type { AgentMessage } from '../../composables/useAgentHistory'
-import ChatHistoryMessageDefault from './ChatHistoryMessageDefault.vue'
+import ChatHistoryMessageAssistant from './ChatHistoryMessageAssistant.vue'
+import ChatHistoryMessageUnknown from './ChatHistoryMessageUnknown.vue'
+import ChatHistoryMessageUser from './ChatHistoryMessageUser.vue'
 
 const props = defineProps<{
   messages: AgentMessage[]
@@ -38,8 +41,16 @@ const props = defineProps<{
 
 const visibleMessages = computed(() => props.messages.filter((message) => message.role !== 'system'))
 
-const resolveRenderer = (_message: AgentMessage) => {
-  return ChatHistoryMessageDefault
+const resolveRenderer = (message: AgentMessage) => {
+  if (message.role === 'assistant') {
+    return ChatHistoryMessageAssistant
+  }
+
+  if (message.role === 'user') {
+    return ChatHistoryMessageUser
+  }
+
+  return ChatHistoryMessageUnknown
 }
 </script>
 

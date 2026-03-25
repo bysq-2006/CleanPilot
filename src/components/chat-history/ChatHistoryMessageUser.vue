@@ -1,0 +1,60 @@
+<template>
+  <div
+    v-if="displayContent"
+    class="user-message"
+  >
+    <div class="user-bubble">
+      <p class="user-content">{{ displayContent }}</p>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+
+import type { AgentMessage } from '../../composables/useAgentHistory'
+
+const props = defineProps<{
+  message: AgentMessage
+}>()
+
+const displayContent = computed(() => {
+  if (props.message.content && props.message.content.trim()) {
+    return props.message.content
+  }
+
+  if (props.message.tool_calls?.length) {
+    return JSON.stringify(props.message.tool_calls, null, 2)
+  }
+
+  if (props.message.tool_call_id) {
+    return `tool_call_id: ${props.message.tool_call_id}`
+  }
+
+  return ''
+})
+</script>
+
+<style scoped>
+.user-message {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.user-bubble {
+  max-width: min(40rem, 100%);
+  padding: 0.8125rem 0.9375rem;
+  border-radius: 1.125rem;
+  background: #eceff0;
+}
+
+.user-content {
+  margin: 0;
+  color: #334155;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.65;
+  font-size: 0.9375rem;
+}
+</style>
