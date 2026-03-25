@@ -43,11 +43,6 @@ async fn request_and_enqueue_tasks(
     match runtime.llm.chat_stream(&runtime.history).await {
         Ok(mut stream) => {
             let mut raw_reply = String::new();
-            let mut streaming_content = String::new();
-            // "observing_stream"：仅表示当前还在观察流内容
-            // "reading_content"：已经开始从原始流里提取 content
-            // "waiting_tool_calls"：已经看到 tool_calls，开始等它闭合
-            let mut phase = "observing_stream";
             let mut tool_calls_raw = String::new();
             let mut tool_calls_depth = 0_i32;
 
@@ -64,18 +59,10 @@ async fn request_and_enqueue_tasks(
                                 raw_reply.push_str(&delta);
 
                                 if raw_reply.contains("\"content\"") {
-                                    phase = "reading_content";
-                                }
-
-                                if phase == "reading_content" {
-                                    streaming_content.push_str(&decode_escaped_text(&delta));
-                                    sync_last_message(runtime, &streaming_content);
+                                    sync_content_message(runtime, &raw_reply);
                                 }
 
                                 if raw_reply.contains("\"tool_calls\":") {
-                                    if phase == "observing_stream" {
-                                        phase = "waiting_tool_calls";
-                                    }
                                     (tool_calls_raw, tool_calls_depth) =
                                         collect_tool_calls(&raw_reply);
                                 }
@@ -114,6 +101,46 @@ fn sync_last_message(runtime: &AgentRuntime, content: &str) {
     }) {
         eprintln!("Agent 更新最后一条 Assistant 消息失败: {}", e);
     }
+}
+
+fn sync_content_message(
+    runtime: &AgentRuntime,
+    raw_reply: &str,
+) {
+    let Some(content_key_index) = raw_reply.find("\"content\"") else {
+        return;
+    };
+
+    let value_area = &raw_reply[content_key_index + "\"content\"".len()..];
+    let value_offset = raw_reply.len() - value_area.len();
+
+    let Some(start_quote_offset) = value_area.find('"') else {
+        return;
+    };
+    let start = value_offset + start_quote_offset + 1;
+
+    let mut escaped = false;
+    let mut end = raw_reply.len();
+    let content_slice = &raw_reply[start..];
+
+    for (offset, ch) in content_slice.char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+
+        match ch {
+            '\\' => escaped = true,
+            '"' => {
+                end = start + offset;
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    let decoded = decode_escaped_text(&raw_reply[start..end]);
+    sync_last_message(runtime, &decoded);
 }
 
 fn collect_tool_calls(raw_reply: &str) -> (String, i32) {
