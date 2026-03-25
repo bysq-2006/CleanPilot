@@ -73,6 +73,18 @@ impl AgentHistory {
         Ok(())
     }
 
+    pub fn update_last_message(&self, updater: impl FnOnce(&mut AgentMessage)) -> Result<(), String> {
+        let mut history = self
+            .inner
+            .lock()
+            .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
+        let message = history
+            .last_mut()
+            .ok_or_else(|| "Agent 历史记录为空，无法更新最后一条消息".to_string())?;
+        updater(message);
+        Ok(())
+    }
+
     /// 唯一正式导出接口：必须返回完整 JSON 字符串，供 LLM 直接消费。
     pub fn build_llm_input(&self) -> Result<String, String> {
         let system_prompt = self
