@@ -2,6 +2,11 @@ mod disk_cleanup;
 mod utility;
 
 use crate::agent::runtime::AgentRuntime;
+use std::future::Future;
+use std::pin::Pin;
+
+pub type ToolFuture = Pin<Box<dyn Future<Output = Result<String, String>> + Send>>;
+pub type ToolHandler = fn(AgentRuntime, String) -> ToolFuture;
 
 const ENABLE_ALL_TOOLS: &str = "*";
 
@@ -10,7 +15,7 @@ pub struct ToolDefinition {
     pub name: &'static str,
     pub description: &'static str,
     pub usage: &'static str,
-    pub handler: fn(&AgentRuntime, &str) -> Result<String, String>,
+    pub handler: ToolHandler,
 }
 
 #[derive(Clone)]
@@ -62,13 +67,13 @@ impl ToolManager {
         lines.join("\n")
     }
 
-    pub fn call(&self, runtime: &AgentRuntime, name: &str, payload: &str) -> Result<String, String> {
+    pub async fn call(&self, runtime: &AgentRuntime, name: &str, payload: &str) -> Result<String, String> {
         let tool = self
             .tools
             .iter()
             .find(|tool| tool.name == name)
             .ok_or_else(|| format!("未找到工具: {}", name))?;
 
-        (tool.handler)(runtime, payload)
+        (tool.handler)(runtime.clone(), payload.to_string()).await
     }
 }

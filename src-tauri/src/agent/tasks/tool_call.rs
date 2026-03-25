@@ -11,7 +11,7 @@ pub async fn handle_tool_call(
 ) {
     println!("Agent 收到工具调用任务: {}, payload={}", tool_name, payload);
 
-    let result = runtime.tools.call(runtime, &tool_name, &payload);
+    let result = runtime.tools.call(runtime, &tool_name, &payload).await;
 
     let content = match result {
         Ok(output) => format!(

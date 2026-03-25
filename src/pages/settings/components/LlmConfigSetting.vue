@@ -25,7 +25,7 @@
             v-model="field.valueRef.value"
             class="provider-field__input"
             type="text"
-            @blur="saveConfig(false)"
+            @blur="saveConfig()"
           />
         </div>
       </div>
@@ -112,7 +112,7 @@ async function loadConfig() {
   }
 }
 
-async function saveConfig(showNotice = true) {
+async function saveConfig() {
   try {
     await invoke('save_config', {
       section: 'llm',
@@ -130,7 +130,7 @@ function handleProviderChange() {
     return
   }
 
-  saveConfig(false)
+  saveConfig()
 }
 
 onMounted(loadConfig)
