@@ -1,6 +1,7 @@
 use crate::agent::context::history::{AgentMessage, AgentToolCall};
 use crate::agent::runtime::AgentRuntime;
 use crate::agent::tasks::queue::AgentTask;
+use crate::utils::text_decode::decode_escaped_text;
 use futures_util::StreamExt;
 
 /// 处理用户问题任务：先写入 user 消息，再把 LLM 原始输出交给 agent 侧解析器处理。
@@ -42,88 +43,18 @@ async fn request_and_enqueue_tasks(
     match runtime.llm.chat_stream(&runtime.history).await {
         Ok(mut stream) => {
             let mut raw_reply = String::new();
-            let mut phase = "search_content";
-            let mut content = String::new();
+            let mut streaming_content = String::new();
+            // "observing_stream"：仅表示当前还在观察流内容
+            // "reading_content"：已经开始从原始流里提取 content
+            // "waiting_tool_calls"：已经看到 tool_calls，开始等它闭合
+            let mut phase = "observing_stream";
             let mut tool_calls_raw = String::new();
             let mut tool_calls_depth = 0_i32;
 
-            if let Err(e) = runtime.history.append(AgentMessage {
-                role: "assistant".to_string(),
-                content: Some(String::new()),
-                tool_calls: None,
-                tool_call_id: None,
-            }) {
+            if let Err(e) = append_empty_assistant_message(runtime) {
                 eprintln!("Agent 创建空 Assistant 消息失败: {}", e);
                 return;
             }
-
-            let sync_last_message = |runtime: &AgentRuntime, content: &str| {
-                if let Err(e) = runtime.history.update_last_message(|message| {
-                    message.content = Some(content.to_string());
-                }) {
-                    eprintln!("Agent 更新最后一条 Assistant 消息失败: {}", e);
-                }
-            };
-
-            let read_content = |raw: &str| -> String {
-                let key = "\"content\":\"";
-                let Some(start) = raw.find(key) else {
-                    return String::new();
-                };
-
-                let mut escaped = false;
-                let mut reading_unicode = false;
-                let mut unicode = String::new();
-                let mut result = String::new();
-
-                for ch in raw[start + key.len()..].chars() {
-                    if reading_unicode {
-                        unicode.push(ch);
-                        if unicode.len() == 4 {
-                            if let Ok(code) = u32::from_str_radix(&unicode, 16) {
-                                if let Some(decoded) = char::from_u32(code) {
-                                    result.push(decoded);
-                                }
-                            }
-                            unicode.clear();
-                            reading_unicode = false;
-                            escaped = false;
-                        }
-                        continue;
-                    }
-
-                    if escaped {
-                        match ch {
-                            '"' => result.push('"'),
-                            '\\' => result.push('\\'),
-                            '/' => result.push('/'),
-                            'b' => result.push('\u{0008}'),
-                            'f' => result.push('\u{000C}'),
-                            'n' => result.push('\n'),
-                            'r' => result.push('\r'),
-                            't' => result.push('\t'),
-                            'u' => {
-                                reading_unicode = true;
-                                unicode.clear();
-                            }
-                            other => result.push(other),
-                        }
-
-                        if !reading_unicode {
-                            escaped = false;
-                        }
-                        continue;
-                    }
-
-                    match ch {
-                        '\\' => escaped = true,
-                        '"' => break,
-                        other => result.push(other),
-                    }
-                }
-
-                result
-            };
 
             while let Some(chunk) = stream.next().await {
                 match chunk {
@@ -132,49 +63,21 @@ async fn request_and_enqueue_tasks(
                             if let Some(delta) = choice.delta.content {
                                 raw_reply.push_str(&delta);
 
-                                if phase == "search_content" && raw_reply.contains("\"content\":\"") {
+                                if raw_reply.contains("\"content\"") {
                                     phase = "reading_content";
                                 }
 
                                 if phase == "reading_content" {
-                                    content = read_content(&raw_reply);
-                                    sync_last_message(runtime, &content);
-
-                                    if raw_reply.contains("\"tool_calls\":") {
-                                        phase = "waiting_tool_calls";
-                                    }
+                                    streaming_content.push_str(&decode_escaped_text(&delta));
+                                    sync_last_message(runtime, &streaming_content);
                                 }
 
-                                if phase == "waiting_tool_calls" {
-                                    if let Some(index) = raw_reply.find("\"tool_calls\":") {
-                                        let suffix = &raw_reply[index + "\"tool_calls\":".len()..];
-                                        tool_calls_raw.clear();
-                                        tool_calls_depth = 0;
-
-                                        let mut started = false;
-                                        for ch in suffix.chars() {
-                                            if !started {
-                                                if ch == '[' {
-                                                    started = true;
-                                                    tool_calls_depth = 1;
-                                                    tool_calls_raw.push(ch);
-                                                }
-                                                continue;
-                                            }
-
-                                            tool_calls_raw.push(ch);
-                                            match ch {
-                                                '[' => tool_calls_depth += 1,
-                                                ']' => {
-                                                    tool_calls_depth -= 1;
-                                                    if tool_calls_depth == 0 {
-                                                        break;
-                                                    }
-                                                }
-                                                _ => {}
-                                            }
-                                        }
+                                if raw_reply.contains("\"tool_calls\":") {
+                                    if phase == "observing_stream" {
+                                        phase = "waiting_tool_calls";
                                     }
+                                    (tool_calls_raw, tool_calls_depth) =
+                                        collect_tool_calls(&raw_reply);
                                 }
                             }
                         }
@@ -187,27 +90,84 @@ async fn request_and_enqueue_tasks(
             }
 
             if !tool_calls_raw.is_empty() && tool_calls_depth == 0 {
-                match serde_json::from_str::<Vec<AgentToolCall>>(&tool_calls_raw) {
-                    Ok(tool_calls) => {
-                        for tool_call in tool_calls {
-                            if let Err(e) = runtime.tasks.push(AgentTask::ToolCall {
-                                tool_call_id: tool_call.id,
-                                tool_name: tool_call.function.name,
-                                payload: tool_call.function.arguments,
-                            }) {
-                                eprintln!("{}: {}", enqueue_error_prefix, e);
-                                break;
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("tool_calls 解析失败: {}\n原始输出: {}", e, tool_calls_raw);
-                    }
-                }
+                enqueue_tool_calls(runtime, &tool_calls_raw, enqueue_error_prefix);
             }
 
             println!("{}: {}", success_log, raw_reply);
         }
         Err(e) => eprintln!("LLM 调用失败: {}", e),
+    }
+}
+
+fn append_empty_assistant_message(runtime: &AgentRuntime) -> Result<(), String> {
+    runtime.history.append(AgentMessage {
+        role: "assistant".to_string(),
+        content: Some(String::new()),
+        tool_calls: None,
+        tool_call_id: None,
+    })
+}
+
+fn sync_last_message(runtime: &AgentRuntime, content: &str) {
+    if let Err(e) = runtime.history.update_last_message(|message| {
+        message.content = Some(content.to_string());
+    }) {
+        eprintln!("Agent 更新最后一条 Assistant 消息失败: {}", e);
+    }
+}
+
+fn collect_tool_calls(raw_reply: &str) -> (String, i32) {
+    let Some(index) = raw_reply.find("\"tool_calls\":") else {
+        return (String::new(), 0);
+    };
+
+    let suffix = &raw_reply[index + "\"tool_calls\":".len()..];
+    let mut tool_calls_raw = String::new();
+    let mut tool_calls_depth = 0;
+    let mut started = false;
+
+    for ch in suffix.chars() {
+        if !started {
+            if ch == '[' {
+                started = true;
+                tool_calls_depth = 1;
+                tool_calls_raw.push(ch);
+            }
+            continue;
+        }
+
+        tool_calls_raw.push(ch);
+        match ch {
+            '[' => tool_calls_depth += 1,
+            ']' => {
+                tool_calls_depth -= 1;
+                if tool_calls_depth == 0 {
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    (tool_calls_raw, tool_calls_depth)
+}
+
+fn enqueue_tool_calls(runtime: &AgentRuntime, tool_calls_raw: &str, enqueue_error_prefix: &str) {
+    match serde_json::from_str::<Vec<AgentToolCall>>(tool_calls_raw) {
+        Ok(tool_calls) => {
+            for tool_call in tool_calls {
+                if let Err(e) = runtime.tasks.push(AgentTask::ToolCall {
+                    tool_call_id: tool_call.id,
+                    tool_name: tool_call.function.name,
+                    payload: tool_call.function.arguments,
+                }) {
+                    eprintln!("{}: {}", enqueue_error_prefix, e);
+                    break;
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("tool_calls 解析失败: {}\n原始输出: {}", e, tool_calls_raw);
+        }
     }
 }

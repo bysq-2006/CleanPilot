@@ -24,7 +24,7 @@ export interface AgentMessage {
 type HistorySyncState = 'idle' | 'active'
 
 const idleIntervalMs = 600
-const activeIntervalMs = 80
+const activeIntervalMs = 20
 const activeTimeoutMs = 1000
 
 class AgentHistoryStore {
