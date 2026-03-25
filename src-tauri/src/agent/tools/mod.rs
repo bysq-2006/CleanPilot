@@ -1,4 +1,7 @@
-mod list_directory;
+mod disk_cleanup;
+mod utility;
+
+use crate::agent::runtime::AgentRuntime;
 
 const ENABLE_ALL_TOOLS: &str = "*";
 
@@ -7,7 +10,7 @@ pub struct ToolDefinition {
     pub name: &'static str,
     pub description: &'static str,
     pub usage: &'static str,
-    pub handler: fn(&str) -> Result<String, String>,
+    pub handler: fn(&AgentRuntime, &str) -> Result<String, String>,
 }
 
 #[derive(Clone)]
@@ -16,8 +19,15 @@ pub struct ToolManager {
 }
 
 impl ToolManager {
+    /// 可以选择启用全部工具（传入 "*"），也可以启用部分工具（传入逗号分隔的工具名列表，例如 "list_directory,disk_info"）
+    /// 或者不启用任何工具（传入空字符串）。
     pub fn new(selection: &str) -> Self {
-        let all_tools = vec![list_directory::register()];
+        let all_tools = vec![
+            disk_cleanup::list_directory::register(),
+            disk_cleanup::disk_info::register(),
+            disk_cleanup::find_large_entries::register(),
+            utility::http_request::register(),
+        ];
         let selection = selection.trim();
 
         let tools = if selection.is_empty() {
@@ -52,13 +62,13 @@ impl ToolManager {
         lines.join("\n")
     }
 
-    pub fn call(&self, name: &str, payload: &str) -> Result<String, String> {
+    pub fn call(&self, runtime: &AgentRuntime, name: &str, payload: &str) -> Result<String, String> {
         let tool = self
             .tools
             .iter()
             .find(|tool| tool.name == name)
             .ok_or_else(|| format!("未找到工具: {}", name))?;
 
-        (tool.handler)(payload)
+        (tool.handler)(runtime, payload)
     }
 }
