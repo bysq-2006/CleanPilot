@@ -3,6 +3,7 @@
     v-if="displaySegments.length"
     class="unknown-message"
   >
+  未知消息类型：
     <div
       v-for="(segment, index) in displaySegments"
       :key="index"
@@ -48,7 +49,7 @@ const displaySegments = computed(() => {
 
 <style scoped>
 .unknown-message {
-  margin: 1rem;
+  margin: 0.8rem;
   margin-left: 2.9rem;
   display: flex;
   flex-direction: column;
