@@ -8,6 +8,8 @@ use serde::Deserialize;
 pub enum AgentTask {
     /// UserQuestion 代表用户输入的一个问题，Agent 需要根据这个问题去思考下一步要调用哪个工具，或者直接回答
     UserQuestion { content: String },
+    /// ContinueFromToolResults 代表一批工具调用已经下发完成，后续应基于工具结果继续请求 LLM
+    ContinueFromToolResults,
     /// ToolCall 代表 Agent 决定要调用一个工具了
     ToolCall { tool_call_id: String, tool_name: String, payload: String },
 }

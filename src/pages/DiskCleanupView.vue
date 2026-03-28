@@ -20,19 +20,20 @@ import ChatHistoryList from '../components/chat-history/ChatHistoryList.vue'
 import { AgentHistoryStore } from '../composables/useAgentHistory'
 
 const agentHistoryStore = new AgentHistoryStore()
-const historyScrollContainer = ref<HTMLDivElement | null>(null)
 const isPinnedToBottom = ref(true)
 
 const messages = computed(() => agentHistoryStore.history.value)
 const syncError = computed(() => agentHistoryStore.syncError.value)
 
+
+//只有用户手动滚动时，才去修改是否自动滚动
+const historyScrollContainer = ref<HTMLDivElement | null>(null)
 const bottomThresholdPx = 12
 
 const checkIsNearBottom = (element: HTMLDivElement) => {
   return element.scrollHeight - element.scrollTop - element.clientHeight <= bottomThresholdPx
 }
 
-//只有用户手动滚动时，才去修改是否自动滚动
 const scrollToBottom = () => {
   const element = historyScrollContainer.value
 

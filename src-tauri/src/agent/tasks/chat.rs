@@ -192,6 +192,10 @@ fn enqueue_tool_calls(runtime: &AgentRuntime, tool_calls_raw: &str, enqueue_erro
                     break;
                 }
             }
+
+            if let Err(e) = runtime.tasks.push(AgentTask::ContinueFromToolResults) {
+                eprintln!("{}: {}", enqueue_error_prefix, e);
+            }
         }
         Err(e) => {
             eprintln!("tool_calls 解析失败: {}\n原始输出: {}", e, tool_calls_raw);

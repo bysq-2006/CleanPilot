@@ -1,8 +1,6 @@
 use crate::agent::context::history::AgentMessage;
 use crate::agent::runtime::AgentRuntime;
 
-use super::chat;
-
 pub async fn handle_tool_call(
     runtime: &AgentRuntime,
     tool_call_id: String,
@@ -33,6 +31,4 @@ pub async fn handle_tool_call(
         eprintln!("Agent 写入工具结果失败: {}", e);
         return;
     }
-
-    chat::handle_continue_reply(runtime).await;
 }
