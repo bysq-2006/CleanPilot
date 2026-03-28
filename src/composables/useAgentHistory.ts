@@ -74,7 +74,17 @@ export class AgentHistoryStore {
     }
 
     if (incoming.length === 1) {
-      this.history.value = [...this.history.value.slice(0, -1), incoming[0]]
+      const [nextMessage] = incoming
+      const lastMessage = this.history.value[this.history.value.length - 1]
+
+      const shouldReplaceLastMessage =
+        lastMessage?.role === 'assistant'
+        && nextMessage.role === 'assistant'
+
+      this.history.value = shouldReplaceLastMessage
+        ? [...this.history.value.slice(0, -1), nextMessage]
+        : [...this.history.value, nextMessage]
+
       this.index.value = this.history.value.length - 1
       return
     }

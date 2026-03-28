@@ -77,7 +77,7 @@ async fn request_and_enqueue_tasks(
             }
 
             if !tool_calls_raw.is_empty() && tool_calls_depth == 0 {
-                enqueue_tool_calls(runtime, &tool_calls_raw, enqueue_error_prefix);
+                process_tool_calls(runtime, &tool_calls_raw, enqueue_error_prefix);
             }
 
             println!("{}: {}", success_log, raw_reply);
@@ -179,26 +179,40 @@ fn collect_tool_calls(raw_reply: &str) -> (String, i32) {
     (tool_calls_raw, tool_calls_depth)
 }
 
-fn enqueue_tool_calls(runtime: &AgentRuntime, tool_calls_raw: &str, enqueue_error_prefix: &str) {
+fn process_tool_calls(runtime: &AgentRuntime, tool_calls_raw: &str, enqueue_error_prefix: &str) {
     match serde_json::from_str::<Vec<AgentToolCall>>(tool_calls_raw) {
         Ok(tool_calls) => {
-            for tool_call in tool_calls {
-                if let Err(e) = runtime.tasks.push(AgentTask::ToolCall {
-                    tool_call_id: tool_call.id,
-                    tool_name: tool_call.function.name,
-                    payload: tool_call.function.arguments,
-                }) {
-                    eprintln!("{}: {}", enqueue_error_prefix, e);
-                    break;
-                }
+            if let Err(e) = runtime.history.update_last_message(|message| {
+                message.tool_calls = Some(tool_calls.clone());
+            }) {
+                eprintln!("Agent 更新最后一条 Assistant 的 tool_calls 失败: {}", e);
             }
 
-            if let Err(e) = runtime.tasks.push(AgentTask::ContinueFromToolResults) {
-                eprintln!("{}: {}", enqueue_error_prefix, e);
-            }
+            enqueue_tool_calls(runtime, tool_calls, enqueue_error_prefix);
         }
         Err(e) => {
             eprintln!("tool_calls 解析失败: {}\n原始输出: {}", e, tool_calls_raw);
         }
+    }
+}
+
+fn enqueue_tool_calls(
+    runtime: &AgentRuntime,
+    tool_calls: Vec<AgentToolCall>,
+    enqueue_error_prefix: &str,
+) {
+    for tool_call in tool_calls {
+        if let Err(e) = runtime.tasks.push(AgentTask::ToolCall {
+            tool_call_id: tool_call.id,
+            tool_name: tool_call.function.name,
+            payload: tool_call.function.arguments,
+        }) {
+            eprintln!("{}: {}", enqueue_error_prefix, e);
+            return;
+        }
+    }
+
+    if let Err(e) = runtime.tasks.push(AgentTask::ContinueFromToolResults) {
+                eprintln!("{}: {}", enqueue_error_prefix, e);
     }
 }
