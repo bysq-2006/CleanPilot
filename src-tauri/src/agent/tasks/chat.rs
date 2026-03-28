@@ -11,6 +11,7 @@ pub async fn handle_user_question(runtime: &AgentRuntime, content: String) {
     if let Err(e) = runtime.history.append(AgentMessage {
         role: "user".to_string(),
         content: Some(content),
+        tool_name: None,
         tool_calls: None,
         tool_call_id: None,
     }) {
@@ -90,6 +91,7 @@ fn append_empty_assistant_message(runtime: &AgentRuntime) -> Result<(), String> 
     runtime.history.append(AgentMessage {
         role: "assistant".to_string(),
         content: Some(String::new()),
+        tool_name: None,
         tool_calls: None,
         tool_call_id: None,
     })

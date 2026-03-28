@@ -17,6 +17,8 @@ struct AgentHistoryContextItem {
     #[serde(skip_serializing_if = "Option::is_none")]
     content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    tool_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     tool_calls: Option<Vec<AgentToolCall>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     tool_call_id: Option<String>,
@@ -42,6 +44,8 @@ pub struct AgentMessage {
     pub role: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<AgentToolCall>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -104,6 +108,7 @@ impl AgentHistory {
                 .map(|message| AgentHistoryContextItem {
                     message_type: message.role.clone(),
                     content: message.content.clone(),
+                    tool_name: message.tool_name.clone(),
                     tool_calls: message.tool_calls.clone(),
                     tool_call_id: message.tool_call_id.clone(),
                 })

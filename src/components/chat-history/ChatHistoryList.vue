@@ -7,6 +7,8 @@
 
         <ChatHistoryMessageUser v-else-if="message.role === 'user'" :message="message" />
 
+        <ChatHistoryMessageToolRouter v-else-if="message.role === 'tool'" :message="message" />
+
         <ChatHistoryMessageUnknown v-else :message="message" />
       </template>
 
@@ -15,9 +17,7 @@
       </div>
     </div>
 
-    <div v-if="pendingToolCall" class="pending-tool-call">
-      <pre>{{ pendingToolCall }}</pre>
-    </div>
+    <ChatHistoryMessageToolRouter v-if="pendingToolCall" :message="pendingToolCall" />
 
     <div v-if="syncError" class="sync-error">
       同步历史记录失败：{{ syncError }}
@@ -32,6 +32,7 @@ import type { AgentMessage } from '../../composables/useAgentHistory'
 import ChatHistoryMessageAssistant from './messages/ChatHistoryMessageAssistant.vue'
 import ChatHistoryMessageUnknown from './ChatHistoryMessageUnknown.vue'
 import ChatHistoryMessageUser from './messages/ChatHistoryMessageUser.vue'
+import ChatHistoryMessageToolRouter from './tools/ChatHistoryMessageToolRouter.vue'
 
 const props = defineProps<{
   messages: AgentMessage[]
@@ -42,7 +43,8 @@ const debugPrintHistory = () => {
   console.log('chat history messages:', props.messages)
 }
 
-// 从后往前找，找到第一个 assistant 消息里未完成的 tool call
+// 从后往前找，找到第一个 assistant 消息里未完成的 tool call，
+// 并转换成 tool 消息格式（附带 ready: true）
 const pendingToolCall = computed<any>(() => {
   const completedToolCallIds = new Set<string>()
 
@@ -59,11 +61,15 @@ const pendingToolCall = computed<any>(() => {
     }
 
     for (const toolCall of message.tool_calls) {
-      console.log('checking tool call', toolCall, completedToolCallIds)
       if (!completedToolCallIds.has(toolCall.id)) {
-        console.log('pending tool call found', toolCall)
+        const toolName = toolCall.function?.name ?? 'unknown_tool'
+        const toolArguments = toolCall.function?.arguments ?? '{}'
+
         return {
-          ...toolCall,
+          role: 'tool',
+          content: `工具调用结果\n工具名: ${toolName}\n参数: ${toolArguments}\n输出:\n`,
+          tool_name: toolName,
+          tool_call_id: toolCall.id,
           ready: true,
         }
       }
@@ -92,10 +98,6 @@ const pendingToolCall = computed<any>(() => {
   min-height: 8rem;
   color: #94a3b8;
   font-size: 0.875rem;
-}
-
-.pending-tool-call {
-  margin-top: 0.75rem;
 }
 
 .sync-error {

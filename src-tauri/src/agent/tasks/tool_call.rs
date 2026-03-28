@@ -25,6 +25,7 @@ pub async fn handle_tool_call(
     if let Err(e) = runtime.history.append(AgentMessage {
         role: "tool".to_string(),
         content: Some(content),
+        tool_name: Some(tool_name),
         tool_calls: None,
         tool_call_id: Some(tool_call_id),
     }) {

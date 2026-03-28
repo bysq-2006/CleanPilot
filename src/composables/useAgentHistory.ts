@@ -17,6 +17,7 @@ export interface AgentToolCall {
 export interface AgentMessage {
   role: AgentMessageRole
   content?: string | null
+  tool_name?: string | null
   tool_calls?: AgentToolCall[] | null
   tool_call_id?: string | null
 }
