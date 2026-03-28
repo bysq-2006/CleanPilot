@@ -2,56 +2,35 @@
 <template>
   <div class="history-panel">
     <div class="message-list">
-      <component
-        :is="resolveRenderer(message)"
-        v-for="(message, index) in visibleMessages"
-        :key="`${message.role}-${index}`"
-        :message="message"
-      />
+      <template v-for="(message, index) in messages" :key="`${message.role}-${index}`">
+        <ChatHistoryMessageAssistant v-if="message.role === 'assistant'" :message="message" />
 
-      <div
-        v-if="visibleMessages.length === 0"
-        class="empty-placeholder"
-      >
+        <ChatHistoryMessageUser v-else-if="message.role === 'user'" :message="message" />
+
+        <ChatHistoryMessageUnknown v-else :message="message" />
+      </template>
+
+      <div v-if="messages.length === 0" class="empty-placeholder">
         暂无聊天记录
       </div>
     </div>
 
-    <div
-      v-if="syncError"
-      class="sync-error"
-    >
+    <div v-if="syncError" class="sync-error">
       同步历史记录失败：{{ syncError }}
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-
 import type { AgentMessage } from '../../composables/useAgentHistory'
-import ChatHistoryMessageAssistant from './ChatHistoryMessageAssistant.vue'
+import ChatHistoryMessageAssistant from './messages/ChatHistoryMessageAssistant.vue'
 import ChatHistoryMessageUnknown from './ChatHistoryMessageUnknown.vue'
-import ChatHistoryMessageUser from './ChatHistoryMessageUser.vue'
+import ChatHistoryMessageUser from './messages/ChatHistoryMessageUser.vue'
 
 const props = defineProps<{
   messages: AgentMessage[]
   syncError: string | null
 }>()
-
-const visibleMessages = computed(() => props.messages.filter((message) => message.role !== 'system'))
-
-const resolveRenderer = (message: AgentMessage) => {
-  if (message.role === 'assistant') {
-    return ChatHistoryMessageAssistant
-  }
-
-  if (message.role === 'user') {
-    return ChatHistoryMessageUser
-  }
-
-  return ChatHistoryMessageUnknown
-}
 </script>
 
 <style scoped>

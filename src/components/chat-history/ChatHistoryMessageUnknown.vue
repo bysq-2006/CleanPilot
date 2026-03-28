@@ -17,27 +17,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { AgentMessage } from '../../composables/useAgentHistory'
-
 const props = defineProps<{
-  message: AgentMessage
+  message: any
 }>()
 
-const displayContent = computed(() => {
-  if (props.message.content && props.message.content.trim()) {
-    return props.message.content
-  }
-
-  if (props.message.tool_calls?.length) {
-    return JSON.stringify(props.message.tool_calls, null, 2)
-  }
-
-  if (props.message.tool_call_id) {
-    return `tool_call_id: ${props.message.tool_call_id}`
-  }
-
-  return ''
-})
+const displayContent = computed(() => props.message.content.trim())
 
 const displaySegments = computed(() => {
   return displayContent.value

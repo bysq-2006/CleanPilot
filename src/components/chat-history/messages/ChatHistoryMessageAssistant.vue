@@ -11,10 +11,13 @@
 
     <div class="assistant-card">
       <div class="assistant-name">Memora</div>
+
       <div
+        v-if="displayContent"
         class="assistant-content markdown-body"
         v-html="renderedContent"
       />
+
     </div>
   </div>
 </template>
@@ -23,7 +26,7 @@
 import { computed } from 'vue'
 import MarkdownIt from 'markdown-it'
 
-import type { AgentMessage } from '../../composables/useAgentHistory'
+import type { AgentMessage } from '../../../composables/useAgentHistory'
 
 const markdown = new MarkdownIt({
   breaks: true,
@@ -34,21 +37,7 @@ const props = defineProps<{
   message: AgentMessage
 }>()
 
-const displayContent = computed(() => {
-  if (props.message.content && props.message.content.trim()) {
-    return props.message.content
-  }
-
-  if (props.message.tool_calls?.length) {
-    return JSON.stringify(props.message.tool_calls, null, 2)
-  }
-
-  if (props.message.tool_call_id) {
-    return `tool_call_id: ${props.message.tool_call_id}`
-  }
-
-  return ''
-})
+const displayContent = computed(() => (props.message.content ?? '').trim())
 
 const renderedContent = computed(() => markdown.render(displayContent.value))
 </script>
@@ -70,7 +59,7 @@ const renderedContent = computed(() => markdown.render(displayContent.value))
 .assistant-card {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.625rem;
   min-width: 0;
 }
 

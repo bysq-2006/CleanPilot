@@ -26,7 +26,7 @@ const isPinnedToBottom = ref(true)
 const messages = computed(() => agentHistoryStore.history.value)
 const syncError = computed(() => agentHistoryStore.syncError.value)
 
-const bottomThresholdPx = 16
+const bottomThresholdPx = 12
 
 const checkIsNearBottom = (element: HTMLDivElement) => {
   return element.scrollHeight - element.scrollTop - element.clientHeight <= bottomThresholdPx
