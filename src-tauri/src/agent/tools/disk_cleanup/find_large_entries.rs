@@ -43,7 +43,7 @@ fn call(_runtime: AgentRuntime, payload: String) -> ToolFuture {
         }
 
         let mut directory_sizes: HashMap<PathBuf, u64> = HashMap::new();
-        let mut large_files = Vec::new();
+        let mut large_files: Vec<(u64, String)> = Vec::new();
         let mut skipped_paths = Vec::new();
 
         for entry in WalkDir::new(root) {
@@ -71,10 +71,13 @@ fn call(_runtime: AgentRuntime, payload: String) -> ToolFuture {
                 let file_size = metadata.len();
 
                 if file_size >= min_size_bytes {
-                    large_files.push(format!(
-                        "- 类型: 文件 | 大小: {} 字节 | 路径: {}",
+                    large_files.push((
                         file_size,
-                        entry_path.display()
+                        format!(
+                            "- 类型: 文件 | 大小: {} 字节 | 路径: {}",
+                            file_size,
+                            entry_path.display()
+                        ),
                     ));
                 }
 
@@ -96,16 +99,19 @@ fn call(_runtime: AgentRuntime, payload: String) -> ToolFuture {
             .into_iter()
             .filter(|(_, size)| *size >= min_size_bytes)
             .map(|(path, size)| {
-                format!(
-                    "- 类型: 文件夹 | 大小: {} 字节 | 路径: {}",
+                (
                     size,
-                    path.display()
+                    format!(
+                        "- 类型: 文件夹 | 大小: {} 字节 | 路径: {}",
+                        size,
+                        path.display()
+                    ),
                 )
             })
-            .collect::<Vec<_>>();
+            .collect::<Vec<(u64, String)>>();
 
-        large_files.sort();
-        large_directories.sort();
+        large_files.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
+        large_directories.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
 
         let mut lines = vec![format!(
             "扫描目录: {}\n筛选条件: 大于等于 {} MB",
@@ -120,12 +126,12 @@ fn call(_runtime: AgentRuntime, payload: String) -> ToolFuture {
 
         if !large_directories.is_empty() {
             lines.push("文件夹结果：".to_string());
-            lines.extend(large_directories);
+            lines.extend(large_directories.into_iter().map(|(_, line)| line));
         }
 
         if !large_files.is_empty() {
             lines.push("文件结果：".to_string());
-            lines.extend(large_files);
+            lines.extend(large_files.into_iter().map(|(_, line)| line));
         }
 
         if !skipped_paths.is_empty() {

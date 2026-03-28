@@ -47,6 +47,7 @@ const renderedContent = computed(() => markdown.render(displayContent.value))
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
+  margin-top: 0.75rem;
   max-width: min(46rem, 100%);
 }
 

@@ -88,7 +88,6 @@ const pendingToolCall = computed<any>(() => {
 .message-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
 }
 
 .empty-placeholder {

@@ -22,6 +22,7 @@ const displayContent = computed(() => props.message.content.trim())
 <style scoped>
 .user-message {
   display: flex;
+  margin-top: 0.75rem;
   justify-content: flex-end;
   width: 100%;
 }
