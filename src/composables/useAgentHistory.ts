@@ -31,7 +31,6 @@ const activeTimeoutMs = 1000
 
 export class AgentHistoryStore {
   history = ref<AgentMessage[]>([])
-  index = ref(0)
   state = ref<HistorySyncState>('idle')
   syncError = ref<string | null>(null)
   isPolling = ref(false)
@@ -65,34 +64,25 @@ export class AgentHistoryStore {
     }, this.getInterval())
   }
 
-  /** 从尾部对齐 history：0 条不处理；其余按“覆盖最后一项 + 追加新增项”处理。 */
+  /**
+   * 同步规则：每次从“本地最后一条索引”开始拉取。
+   * - incoming[0] 覆盖本地最后一条
+   * - incoming[1..] 直接追加
+   */
   private mergeHistory(incoming: AgentMessage[]) {
     if (incoming.length === 0) return
 
     if (this.history.value.length === 0) {
       this.history.value = incoming
-      this.index.value = this.history.value.length === 0 ? 0 : this.history.value.length - 1
       return
     }
 
-    if (incoming.length === 1) {
-      const [nextMessage] = incoming
-      const lastMessage = this.history.value[this.history.value.length - 1]
+    const lastIndex = this.history.value.length - 1
+    this.history.value[lastIndex] = incoming[0]
 
-      const shouldReplaceLastMessage =
-        lastMessage?.role === 'assistant'
-        && nextMessage.role === 'assistant'
-
-      this.history.value = shouldReplaceLastMessage
-        ? [...this.history.value.slice(0, -1), nextMessage]
-        : [...this.history.value, nextMessage]
-
-      this.index.value = this.history.value.length - 1
-      return
+    for (let i = 1; i < incoming.length; i += 1) {
+      this.history.value.push(incoming[i])
     }
-
-    this.history.value = [...this.history.value.slice(0, -1), ...incoming]
-    this.index.value = this.history.value.length - 1
   }
 
   /** 执行一次同步：只要本次有消息就刷新 active 窗口；无消息则按超时回到 idle。 */
@@ -102,8 +92,12 @@ export class AgentHistoryStore {
     this.isSyncing = true
 
     try {
+      const startIndex = this.history.value.length === 0
+        ? 0
+        : this.history.value.length - 1
+
       const incoming = await invoke<AgentMessage[]>('get_history', {
-        startIndex: this.index.value,
+        startIndex,
       })
 
       this.mergeHistory(incoming)

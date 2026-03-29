@@ -1,6 +1,6 @@
 <!-- 这整个vue是一个长页面，没滚动条的，要在外面加 -->
 <template>
-  <div class="history-panel" @click="debugPrintHistory">
+  <div class="history-panel">
     <div class="message-list">
       <template v-for="(message, index) in messages" :key="`${message.role}-${index}`">
         <ChatHistoryMessageAssistant v-if="message.role === 'assistant'" :message="message" />
@@ -38,10 +38,6 @@ const props = defineProps<{
   messages: AgentMessage[]
   syncError: string | null
 }>()
-
-const debugPrintHistory = () => {
-  console.log('chat history messages:', props.messages)
-}
 
 // 从后往前找，找到第一个 assistant 消息里未完成的 tool call，
 // 并转换成 tool 消息格式（附带 ready: true）
