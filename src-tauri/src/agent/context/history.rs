@@ -6,22 +6,7 @@ use std::sync::{Arc, Mutex};
 #[derive(Debug, Clone, Serialize)]
 struct AgentHistoryLlmInput {
     system: String,
-    context: Vec<AgentHistoryContextItem>,
-}
-
-/// context 内部目前只保留最小字段，后面扩展 tool_calls 时再加字段。
-#[derive(Debug, Clone, Serialize)]
-struct AgentHistoryContextItem {
-    #[serde(rename = "type")]
-    message_type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    content: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    tool_name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    tool_calls: Option<Vec<AgentToolCall>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    tool_call_id: Option<String>,
+    context: Vec<AgentMessage>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,7 +24,7 @@ pub struct AgentToolCall {
 }
 
 /// 历史记录，注意，这里应当是队列中的其中一条的记录，而不是整个历史记录
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentMessage {
     pub role: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -103,16 +88,7 @@ impl AgentHistory {
 
         let payload = AgentHistoryLlmInput {
             system: system_prompt,
-            context: history
-                .iter()
-                .map(|message| AgentHistoryContextItem {
-                    message_type: message.role.clone(),
-                    content: message.content.clone(),
-                    tool_name: message.tool_name.clone(),
-                    tool_calls: message.tool_calls.clone(),
-                    tool_call_id: message.tool_call_id.clone(),
-                })
-                .collect(),
+            context: history.clone(),
         };
 
         serde_json::to_string_pretty(&payload)

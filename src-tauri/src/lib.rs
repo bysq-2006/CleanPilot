@@ -1,5 +1,6 @@
 mod agent;
 mod commands;
+mod manager;
 mod models;
 mod utils;
 
@@ -9,9 +10,11 @@ use tauri::Manager;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .manage(AppStore::default())
         .setup(|app| {
             let app_handle = app.handle().clone();
+            let store = AppStore::new(&app_handle)?;
+            app.manage(store);
+
             let store = app.state::<AppStore>();
             let mut config = store
                 .config

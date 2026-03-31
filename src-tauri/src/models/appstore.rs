@@ -1,26 +1,29 @@
 use std::sync::{Arc, Mutex};
 
+use tauri::AppHandle;
+
 use super::config::Config;
 use crate::agent::runtime::AgentRuntime;
+use crate::manager::ManagerModule;
 
 /// 全局状态管理，存储一些全局共享的数据
 pub struct AppStore {
     pub agent: Arc<Mutex<Option<AgentRuntime>>>,
     pub config: Arc<Mutex<Config>>,
-}
-
-impl Default for AppStore {
-    fn default() -> Self {
-        let config = Arc::new(Mutex::new(Config::default()));
-
-        Self {
-            agent: Arc::new(Mutex::new(None)),
-            config,
-        }
-    }
+    pub manager: Arc<ManagerModule>,
 }
 
 impl AppStore {
+    pub fn new(app: &AppHandle) -> Result<Self, String> {
+        let config = Arc::new(Mutex::new(Config::default()));
+
+        Ok(Self {
+            agent: Arc::new(Mutex::new(None)),
+            config,
+            manager: Arc::new(ManagerModule::new(app)?),
+        })
+    }
+
     pub fn init_agent(&self) -> Result<(), String> {
         let mut agent = self
             .agent

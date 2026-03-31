@@ -26,7 +26,7 @@ const displayContent = computed(() => props.message.content.trim())
 const displaySegments = computed(() => {
   return displayContent.value
     .split(/\n{2,}/)
-    .map((segment) => segment.trim())
+    .map((segment: any) => segment.trim())
     .filter(Boolean)
 })
 </script>

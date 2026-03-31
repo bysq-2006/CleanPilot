@@ -12,11 +12,20 @@ pub fn chat(app: AppHandle, content: String) -> Result<(), String> {
         .lock()
         .map_err(|e| format!("Agent 锁获取失败: {}", e))?;
 
-    agent
+    let agent = agent
         .as_ref()
-        .ok_or_else(|| "Agent 尚未初始化".to_string())?
-        .tasks
-        .push(AgentTask::UserQuestion { content })
+        .ok_or_else(|| "Agent 尚未初始化".to_string())?;
+
+    agent.tasks.push(AgentTask::UserQuestion { content })?;
+
+    // 严格来说，这应该不属于 agent，而是 manager 的职责，但目前为了简化流程先放在这里。
+    let history = agent
+        .history
+        .inner
+        .lock()
+        .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
+
+    store.manager.history.save_context_items(&history)
 }
 
 #[tauri::command]
