@@ -30,7 +30,15 @@ impl AppStore {
             .lock()
             .map_err(|e| format!("Agent 锁获取失败: {}", e))?;
 
-        *agent = Some(AgentRuntime::new(Arc::clone(&self.config)));
+        let runtime = AgentRuntime::new(Arc::clone(&self.config));
+        self.manager
+            .agent_scene
+            .switch_scene(
+                self.manager.agent_scene.get_current_scene()?,
+                &runtime,
+            )?;
+
+        *agent = Some(runtime);
 
         Ok(())
     }

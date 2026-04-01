@@ -35,6 +35,7 @@ const router = useRouter()
 const route = useRoute()
 
 const navItems = [
+  { key: 'chat-records', label: '聊天记录', icon: '/ChatRecords.svg', to: '/chat-records' },
   { key: 'disk-cleanup', label: '磁盘清理', icon: '/DiskCleanup.svg', to: '/' },
   { key: 'settings', label: '设置', icon: '/Settings.svg', to: '/settings' },
 ]

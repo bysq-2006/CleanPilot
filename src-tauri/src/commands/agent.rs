@@ -2,6 +2,7 @@ use tauri::{AppHandle, Manager};
 
 use crate::agent::context::history::AgentMessage;
 use crate::agent::tasks::queue::AgentTask;
+use crate::manager::history::HistoryRecordSummary;
 use crate::models::appstore::AppStore;
 
 #[tauri::command]
@@ -48,6 +49,12 @@ pub fn get_history(app: AppHandle, start_index: usize) -> Result<Vec<AgentMessag
     }
 
     Ok(history[start_index..].to_vec())
+}
+
+#[tauri::command]
+pub fn list_history_records(app: AppHandle) -> Result<Vec<HistoryRecordSummary>, String> {
+    let store = app.state::<AppStore>();
+    store.manager.history.list_history_records()
 }
 
 #[tauri::command]

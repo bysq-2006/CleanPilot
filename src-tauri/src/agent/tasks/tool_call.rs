@@ -9,7 +9,15 @@ pub async fn handle_tool_call(
 ) {
     println!("Agent 收到工具调用任务: {}, payload={}", tool_name, payload);
 
-    let result = runtime.tools.call(runtime, &tool_name, &payload).await;
+    let tools = match runtime.tools.lock() {
+        Ok(tools) => tools.clone(),
+        Err(error) => {
+            eprintln!("Agent 工具锁获取失败: {}", error);
+            return;
+        }
+    };
+
+    let result = tools.call(runtime, &tool_name, &payload).await;
 
     let content = match result {
         Ok(output) => format!(

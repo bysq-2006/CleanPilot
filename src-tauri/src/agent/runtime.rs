@@ -17,7 +17,7 @@ pub struct AgentRuntime {
     pub history: AgentHistory,
     pub tasks: AgentTaskQueue,
     pub llm: AgentLlm,
-    pub tools: ToolManager,
+    pub tools: Arc<Mutex<ToolManager>>,
 }
 
 impl AgentRuntime {
@@ -34,7 +34,7 @@ impl AgentRuntime {
             history,
             tasks: AgentTaskQueue::default(),
             llm: AgentLlm::new(config),
-            tools,
+            tools: Arc::new(Mutex::new(tools)),
         }
     }
 
