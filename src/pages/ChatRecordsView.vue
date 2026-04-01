@@ -12,6 +12,9 @@
           v-for="record in records"
           :key="record.context_id"
           class="record-item"
+          role="button"
+          tabindex="0"
+          @click="handleRestore(record.context_id)"
         >
           <div class="record-preview">{{ record.preview }}</div>
           <div class="record-meta">
@@ -27,15 +30,20 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+import { AgentHistoryStore, type AgentMessage } from '../composables/useAgentHistory'
 
 interface HistoryRecordSummary {
   context_id: string
   scene: string
   message_count: number
   preview: string
-  items: unknown[]
+  items: AgentMessage[]
 }
 
+const router = useRouter()
+const agentHistoryStore = new AgentHistoryStore()
 const records = ref<HistoryRecordSummary[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -52,6 +60,18 @@ async function loadHistoryRecords() {
   }
   finally {
     loading.value = false
+  }
+}
+
+async function handleRestore(contextId: string) {
+  const record = await invoke<HistoryRecordSummary>('restore_history_context', {
+    contextId,
+  })
+
+  agentHistoryStore.reset(record.items)
+
+  if (record.scene === 'disk_cleanup') {
+    await router.push('/')
   }
 }
 

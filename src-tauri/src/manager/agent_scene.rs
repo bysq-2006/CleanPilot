@@ -11,6 +11,13 @@ pub enum AgentScene {
 }
 
 impl AgentScene {
+    pub fn from_str(value: &str) -> Result<Self, String> {
+        match value {
+            "disk_cleanup" => Ok(Self::DiskCleanup),
+            _ => Err(format!("未知场景: {}", value)),
+        }
+    }
+
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::DiskCleanup => "disk_cleanup",

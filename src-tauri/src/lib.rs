@@ -34,13 +34,17 @@ pub fn run() {
                 .ok_or_else(|| "Agent 初始化失败".to_string())?
                 .start();
 
+            store.manager.start_auto_save(app_handle.clone());
+
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             commands::agent::chat,
             commands::agent::get_history,
-            commands::agent::list_history_records,
+            commands::manager_context::list_history_records,
+            commands::manager_context::create_history_context,
+            commands::manager_context::restore_history_context,
             commands::agent::debug_print_history,
             commands::settings::set_config::get_config,
             commands::settings::set_config::save_config,

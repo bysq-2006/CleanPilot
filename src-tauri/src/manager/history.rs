@@ -88,6 +88,10 @@ impl HistoryManager {
 
     /// 保存历史记录上下文到文件系统，供后续读取。
     pub fn save_context_items(&self, items: &Vec<AgentMessage>) -> Result<(), String> {
+        if items.is_empty() {
+            return Ok(());
+        }
+
         let context_file_path = self
             .get_current_context_path()?
             .ok_or_else(|| "当前上下文未设置，无法保存历史记录".to_string())?;

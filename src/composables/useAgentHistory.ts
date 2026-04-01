@@ -135,4 +135,11 @@ export class AgentHistoryStore {
       this.timer = null
     }
   }
+
+  reset(messages: AgentMessage[] = []) {
+    this.history.value = messages
+    this.state.value = 'idle'
+    this.syncError.value = null
+    this.activeUntil = 0
+  }
 }
