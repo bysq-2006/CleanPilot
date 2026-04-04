@@ -4,6 +4,8 @@ use crate::agent::tasks::queue::AgentTask;
 use crate::utils::text_decode::decode_escaped_text;
 use futures_util::StreamExt;
 
+const EVENT_CHAT_ROUND_FINISHED: &str = "chat_round_finished";
+
 /// 处理用户问题任务：先写入 user 消息，再把 LLM 原始输出交给 agent 侧解析器处理。
 pub async fn handle_user_question(runtime: &AgentRuntime, content: String) {
     println!("Agent 收到用户问题任务: {}", content);
@@ -44,8 +46,6 @@ async fn request_and_enqueue_tasks(
     match runtime.llm.chat_stream(&runtime.history).await {
         Ok(mut stream) => {
             let mut raw_reply = String::new();
-            let mut tool_calls_raw = String::new();
-            let mut tool_calls_depth = 0_i32;
 
             if let Err(e) = append_empty_assistant_message(runtime) {
                 eprintln!("Agent 创建空 Assistant 消息失败: {}", e);
@@ -62,11 +62,6 @@ async fn request_and_enqueue_tasks(
                                 if raw_reply.contains("\"content\"") {
                                     sync_content_message(runtime, &raw_reply);
                                 }
-
-                                if raw_reply.contains("\"tool_calls\":") {
-                                    (tool_calls_raw, tool_calls_depth) =
-                                        collect_tool_calls(&raw_reply);
-                                }
                             }
                         }
                     }
@@ -77,8 +72,10 @@ async fn request_and_enqueue_tasks(
                 }
             }
 
-            if !tool_calls_raw.is_empty() && tool_calls_depth == 0 {
+            if let Some(tool_calls_raw) = extract_tool_calls(&raw_reply) {
                 process_tool_calls(runtime, &tool_calls_raw, enqueue_error_prefix);
+            } else {
+                emit_chat_round_finished(runtime);
             }
 
             println!("{}: {}", success_log, raw_reply);
@@ -145,40 +142,16 @@ fn sync_content_message(
     sync_last_message(runtime, &decoded);
 }
 
-fn collect_tool_calls(raw_reply: &str) -> (String, i32) {
-    let Some(index) = raw_reply.find("\"tool_calls\":") else {
-        return (String::new(), 0);
+fn extract_tool_calls(raw_reply: &str) -> Option<String> {
+    let Some(start) = raw_reply.find("\"tool_calls\":[") else {
+        return None;
     };
 
-    let suffix = &raw_reply[index + "\"tool_calls\":".len()..];
-    let mut tool_calls_raw = String::new();
-    let mut tool_calls_depth = 0;
-    let mut started = false;
+    let value_start = start + "\"tool_calls\":".len();
+    let suffix = &raw_reply[value_start..];
+    let end = suffix.rfind(']')?;
 
-    for ch in suffix.chars() {
-        if !started {
-            if ch == '[' {
-                started = true;
-                tool_calls_depth = 1;
-                tool_calls_raw.push(ch);
-            }
-            continue;
-        }
-
-        tool_calls_raw.push(ch);
-        match ch {
-            '[' => tool_calls_depth += 1,
-            ']' => {
-                tool_calls_depth -= 1;
-                if tool_calls_depth == 0 {
-                    break;
-                }
-            }
-            _ => {}
-        }
-    }
-
-    (tool_calls_raw, tool_calls_depth)
+    Some(suffix[..=end].to_string())
 }
 
 fn process_tool_calls(runtime: &AgentRuntime, tool_calls_raw: &str, enqueue_error_prefix: &str) {
@@ -216,5 +189,11 @@ fn enqueue_tool_calls(
 
     if let Err(e) = runtime.tasks.push(AgentTask::ContinueFromToolResults) {
                 eprintln!("{}: {}", enqueue_error_prefix, e);
+    }
+}
+
+fn emit_chat_round_finished(runtime: &AgentRuntime) {
+    if let Err(e) = runtime.events.send(EVENT_CHAT_ROUND_FINISHED.to_string()) {
+        eprintln!("Agent 对话结束事件发送失败: {}", e);
     }
 }

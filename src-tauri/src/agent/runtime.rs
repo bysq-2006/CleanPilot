@@ -1,6 +1,7 @@
 /// 设计哲学是：本身有一个循环，然后循环要根据任务列表去执行任务，并且他唯一的输出就是输出在 history 里面，不会直接和前端交互
 /// 然后每一任务都是一个单独的文件，任务的执行逻辑也在那个文件里
 /// 而这一层就是要根据match去调用不同的任务文件里的函数
+/// 内部有事件委托机制，任务执行完了可以发一个事件，外面监听到这个事件了就可以做一些事情，比如说自动保存历史记录之类的
 use std::time::Duration;
 
 use super::context::history::AgentHistory;
@@ -10,6 +11,7 @@ use super::tasks::queue::AgentTaskQueue;
 use super::tools::ToolManager;
 use crate::models::config::Config;
 use std::sync::{Arc, Mutex};
+use tokio::sync::broadcast;
 use tokio::time::sleep;
 
 #[derive(Clone)]
@@ -18,12 +20,14 @@ pub struct AgentRuntime {
     pub tasks: AgentTaskQueue,
     pub llm: AgentLlm,
     pub tools: Arc<Mutex<ToolManager>>,
+    pub events: broadcast::Sender<String>,
 }
 
 impl AgentRuntime {
     pub fn new(config: Arc<Mutex<Config>>) -> Self {
         let tools = ToolManager::new("*");
         let history = AgentHistory::new();
+        let (events, _) = broadcast::channel(32);
         history
             .system_prompt
             .lock()
@@ -35,6 +39,7 @@ impl AgentRuntime {
             tasks: AgentTaskQueue::default(),
             llm: AgentLlm::new(config),
             tools: Arc::new(Mutex::new(tools)),
+            events,
         }
     }
 
