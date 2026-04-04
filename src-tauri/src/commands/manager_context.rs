@@ -82,3 +82,9 @@ pub fn restore_history_context(app: AppHandle, context_id: String) -> Result<His
 
     Ok(record)
 }
+
+#[tauri::command]
+pub fn delete_history_context(app: AppHandle, context_id: String) -> Result<(), String> {
+    let store = app.state::<AppStore>();
+    store.manager.history.delete_context(context_id)
+}

@@ -13,7 +13,6 @@
 </template>
 
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 import ChatComposer from '../components/ChatComposer.vue'
@@ -63,7 +62,6 @@ watch(
 )
 
 onMounted(async () => {
-  await invoke<string>('create_history_context')
   await nextTick()
   scrollToBottom()
   handleHistoryScroll()

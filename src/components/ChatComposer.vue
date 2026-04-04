@@ -75,6 +75,7 @@ const loadCurrentScene = async () => {
   selectedScene.value = await invoke<string>('get_current_scene')
 }
 
+// 设置当前场景后，自动关闭菜单
 const selectMode = async (scene: string) => {
   if (selectedScene.value === scene) {
     isModeMenuOpen.value = false
@@ -179,7 +180,7 @@ onMounted(() => {
   padding: 0 0.875rem;
   border: 0.0625rem solid #e2e8f0;
   border-radius: 0.75rem;
-  background-color: #f8fafc;
+  background-color: #ffffff;
   cursor: pointer;
   color: #5f6b7a;
   font-size: 0.875rem;
@@ -191,7 +192,7 @@ onMounted(() => {
 }
 
 .mode-trigger:hover {
-  background-color: #ffffff;
+  background-color: #f3f6fa;
   border-color: #cdd8e5;
 }
 

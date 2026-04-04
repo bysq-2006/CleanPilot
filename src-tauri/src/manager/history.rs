@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf, sync::{Arc, Mutex}};
+use std::{fs, path::PathBuf, sync::{Arc, Mutex}, time::{SystemTime, UNIX_EPOCH}};
 
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +14,8 @@ const HISTORY_DIR_NAME: &str = "history";
 pub struct HistoryRecordSummary {
     pub context_id: String,
     pub scene: String,
+    #[serde(default)]
+    pub updated_at: u64,
     pub message_count: usize,
     pub preview: String,
     #[serde(default)]
@@ -117,6 +119,10 @@ impl HistoryManager {
         let record = HistoryRecordSummary {
             context_id,
             scene,
+            updated_at: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map_err(|e| format!("系统时间异常: {}", e))?
+                .as_secs(),
             message_count: items.len(),
             preview,
             items: items.clone(),
@@ -141,6 +147,25 @@ impl HistoryManager {
             .map_err(|e| format!("读取历史记录失败: {}", e))?;
 
         serde_json::from_str(&content).map_err(|e| format!("历史记录反序列化失败: {}", e))
+    }
+
+    pub fn delete_context(&self, context_id: String) -> Result<(), String> {
+        let history_dir_path = self
+            .history_dir_path
+            .lock()
+            .map_err(|e| format!("历史目录锁获取失败: {}", e))?
+            .clone();
+
+        let context_file_path = history_dir_path.join(format!("{}.json", context_id));
+
+        if !context_file_path.exists() {
+            return Ok(());
+        }
+
+        fs::remove_file(context_file_path)
+            .map_err(|e| format!("删除历史记录失败: {}", e))?;
+
+        Ok(())
     }
 
     /// 列出所有历史记录文件，返回它们的上下文 ID、消息数量和预览信息，供 UI 展示会话列表。
@@ -172,13 +197,18 @@ impl HistoryManager {
             records.push(HistoryRecordSummary {
                 context_id,
                 scene: record.scene,
+                updated_at: record.updated_at,
                 message_count: record.message_count,
                 preview: record.preview,
                 items: record.items,
             });
         }
 
-        records.sort_by(|a, b| b.context_id.cmp(&a.context_id));
+        records.sort_by(|a, b| {
+            b.updated_at
+                .cmp(&a.updated_at)
+                .then_with(|| b.context_id.cmp(&a.context_id))
+        });
 
         Ok(records)
     }

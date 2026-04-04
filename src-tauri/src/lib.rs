@@ -47,6 +47,7 @@ pub fn run() {
             commands::manager_context::create_history_context,
             commands::manager_context::restore_history_context,
             commands::manager_context::switch_current_scene,
+            commands::manager_context::delete_history_context,
             commands::agent::debug_print_history,
             commands::settings::set_config::get_config,
             commands::settings::set_config::save_config,
