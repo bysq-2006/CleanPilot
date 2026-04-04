@@ -1,14 +1,16 @@
 use crate::agent::context::history::{AgentMessage, AgentToolCall};
-use crate::agent::runtime::AgentRuntime;
+use crate::agent::runtime::{AgentRuntime, AgentStatus};
 use crate::agent::tasks::queue::AgentTask;
 use crate::utils::text_decode::decode_escaped_text;
 use futures_util::StreamExt;
 
-const EVENT_CHAT_ROUND_FINISHED: &str = "chat_round_finished";
-
 /// 处理用户问题任务：先写入 user 消息，再把 LLM 原始输出交给 agent 侧解析器处理。
 pub async fn handle_user_question(runtime: &AgentRuntime, content: String) {
     println!("Agent 收到用户问题任务: {}", content);
+
+    if let Err(e) = runtime.set_status(AgentStatus::Chatting) {
+        eprintln!("Agent 切换到聊天状态失败: {}", e);
+    }
 
     if let Err(e) = runtime.history.append(AgentMessage {
         role: "user".to_string(),
@@ -74,13 +76,18 @@ async fn request_and_enqueue_tasks(
 
             if let Some(tool_calls_raw) = extract_tool_calls(&raw_reply) {
                 process_tool_calls(runtime, &tool_calls_raw, enqueue_error_prefix);
-            } else {
-                emit_chat_round_finished(runtime);
+            } else if let Err(e) = runtime.set_status(AgentStatus::Idle) {
+                eprintln!("Agent 切换到空闲状态失败: {}", e);
             }
 
             println!("{}: {}", success_log, raw_reply);
         }
-        Err(e) => eprintln!("LLM 调用失败: {}", e),
+        Err(e) => {
+            if let Err(status_error) = runtime.set_status(AgentStatus::Idle) {
+                eprintln!("Agent 切换到空闲状态失败: {}", status_error);
+            }
+            eprintln!("LLM 调用失败: {}", e)
+        }
     }
 }
 
@@ -143,11 +150,13 @@ fn sync_content_message(
 }
 
 fn extract_tool_calls(raw_reply: &str) -> Option<String> {
-    let Some(start) = raw_reply.find("\"tool_calls\":[") else {
+    let Some(tool_calls_key_index) = raw_reply.find("\"tool_calls\"") else {
         return None;
     };
 
-    let value_start = start + "\"tool_calls\":".len();
+    let suffix = &raw_reply[tool_calls_key_index + "\"tool_calls\"".len()..];
+    let array_start_offset = suffix.find('[')?;
+    let value_start = tool_calls_key_index + "\"tool_calls\"".len() + array_start_offset;
     let suffix = &raw_reply[value_start..];
     let end = suffix.rfind(']')?;
 
@@ -192,8 +201,3 @@ fn enqueue_tool_calls(
     }
 }
 
-fn emit_chat_round_finished(runtime: &AgentRuntime) {
-    if let Err(e) = runtime.events.send(EVENT_CHAT_ROUND_FINISHED.to_string()) {
-        eprintln!("Agent 对话结束事件发送失败: {}", e);
-    }
-}
