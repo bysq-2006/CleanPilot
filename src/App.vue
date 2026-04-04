@@ -81,7 +81,7 @@ body {
   border-radius: 1.5rem;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 4.1875rem 1fr;
+  grid-template-columns: 4rem 1fr;
 }
 
 .left-nav {

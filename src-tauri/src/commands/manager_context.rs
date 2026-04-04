@@ -13,6 +13,29 @@ pub fn list_history_records(app: AppHandle) -> Result<Vec<HistoryRecordSummary>,
 }
 
 #[tauri::command]
+/// 获取当前 Agent 场景的名称字符串。
+pub fn get_current_scene(app: AppHandle) -> Result<String, String> {
+    let store = app.state::<AppStore>();
+    Ok(store.manager.agent_scene.get_current_scene()?.as_str().to_string())
+}
+
+#[tauri::command]
+/// 切换当前 Agent 场景并应用到 Agent 实例。
+pub fn switch_current_scene(app: AppHandle, scene: String) -> Result<(), String> {
+    let store = app.state::<AppStore>();
+    let agent = store
+        .agent
+        .lock()
+        .map_err(|e| format!("Agent 锁获取失败: {}", e))?;
+    let agent = agent
+        .as_ref()
+        .ok_or_else(|| "Agent 尚未初始化".to_string())?;
+
+    let scene = AgentScene::from_str(&scene)?;
+    store.manager.agent_scene.switch_scene(scene, agent)
+}
+
+#[tauri::command]
 /// 创建一个新的会话 UUID 并写入当前历史上下文，同时切换到磁盘清理场景。
 pub fn create_history_context(app: AppHandle) -> Result<String, String> {
     let store = app.state::<AppStore>();

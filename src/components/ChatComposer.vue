@@ -12,6 +12,32 @@
       />
       <button
         type="button"
+        class="mode-trigger"
+        aria-label="模式选择"
+        :aria-expanded="isModeMenuOpen"
+        @click="toggleModeMenu"
+      >
+        <span class="mode-label">清理模式</span>
+        <img
+          src="/ChevronDown.svg"
+          alt=""
+          class="mode-caret-icon"
+          :class="{ 'is-open': isModeMenuOpen }"
+          aria-hidden="true"
+        />
+      </button>
+      <div v-if="isModeMenuOpen" class="mode-menu">
+        <button type="button" class="mode-menu-item is-active" @click="selectMode('disk_cleanup')">
+          <img src="/DiskCleanup.svg" alt="清理模式" class="mode-menu-icon" />
+          <span class="mode-menu-text-group">
+            <span class="mode-menu-title">清理模式</span>
+            <span class="mode-menu-desc">磁盘清理与空间分析</span>
+          </span>
+          <span class="mode-menu-check">✓</span>
+        </button>
+      </div>
+      <button
+        type="button"
         class="send-button"
         aria-label="发送"
         :disabled="isSending"
@@ -37,7 +63,28 @@ import { pushNotice } from '../composables/useNoticeCenter'
 const inputText = ref('')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const isSending = ref(false)
+const isModeMenuOpen = ref(false)
+const selectedScene = ref('disk_cleanup')
 const maxTextareaHeightRem = 11.25
+
+const toggleModeMenu = () => {
+  isModeMenuOpen.value = !isModeMenuOpen.value
+}
+
+const loadCurrentScene = async () => {
+  selectedScene.value = await invoke<string>('get_current_scene')
+}
+
+const selectMode = async (scene: string) => {
+  if (selectedScene.value === scene) {
+    isModeMenuOpen.value = false
+    return
+  }
+
+  await invoke('switch_current_scene', { scene })
+  selectedScene.value = scene
+  isModeMenuOpen.value = false
+}
 
 /// 输入框高度自适应，最大高度为 11.25rem，超过后显示滚动条
 const resizeTextarea = () => {
@@ -88,6 +135,7 @@ onMounted(() => {
   nextTick(() => {
     resizeTextarea()
   })
+  loadCurrentScene()
 })
 </script>
 
@@ -115,9 +163,123 @@ onMounted(() => {
 }
 
 .input-row {
+  position: relative;
   display: flex;
   align-items: flex-end;
   gap: 0.5rem;
+}
+
+.mode-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 2.625rem;
+  min-width: 6.5rem;
+  padding: 0 0.875rem;
+  border: 0.0625rem solid #e2e8f0;
+  border-radius: 0.75rem;
+  background-color: #f8fafc;
+  cursor: pointer;
+  color: #5f6b7a;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.5;
+  outline: none;
+  box-sizing: border-box;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.mode-trigger:hover {
+  background-color: #ffffff;
+  border-color: #cdd8e5;
+}
+
+.mode-trigger:focus-visible {
+  outline: 0.125rem solid #c7d2fe;
+  outline-offset: 0.125rem;
+}
+
+.mode-label {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  white-space: nowrap;
+}
+
+.mode-caret-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+  display: block;
+  opacity: 0.72;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.mode-caret-icon.is-open {
+  opacity: 1;
+  transform: rotate(180deg);
+}
+
+.mode-menu {
+  position: absolute;
+  right: 3.25rem;
+  bottom: calc(100% + 0.5rem);
+  width: 16rem;
+  padding: 0.5rem;
+  border-radius: 1rem;
+  background-color: #ffffff;
+  border: 0.0625rem solid #e5e7eb;
+  box-shadow: 0 0.75rem 2rem rgba(15, 23, 42, 0.14);
+  z-index: 10;
+}
+
+.mode-menu-item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem;
+  border-radius: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mode-menu-item.is-active {
+  background-color: #f8fafc;
+}
+
+.mode-menu-icon {
+  width:  1.2rem;
+  height: 1.2rem;
+  flex-shrink: 0;
+}
+
+.mode-menu-text-group {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.mode-menu-title {
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #5f6b7a;
+}
+
+.mode-menu-desc {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.mode-menu-check {
+  margin-left: auto;
+  color: #111827;
+  font-weight: 500;
 }
 
 .send-button {
