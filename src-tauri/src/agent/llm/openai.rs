@@ -7,8 +7,6 @@ use async_openai::Client;
 use futures_util::{Stream, StreamExt};
 
 use crate::agent::context::history::AgentHistory;
-use crate::models::llm_config::DeepseekConfig;
-
 use super::utils::{get_required_config, normalize_openai_api_base};
 
 pub type LlmStream =
@@ -16,11 +14,13 @@ pub type LlmStream =
 
 pub async fn chat_stream(
     history: &AgentHistory,
-    config: &DeepseekConfig,
+    api_key: &str,
+    base_url: &str,
+    model: &str,
 ) -> Result<LlmStream, String> {
-    let api_key = get_required_config(&config.api_key, "api_key")?;
-    let base_url = get_required_config(&config.base_url, "base_url")?;
-    let model = get_required_config(&config.model, "model")?;
+    let api_key = get_required_config(api_key, "api_key")?;
+    let base_url = get_required_config(base_url, "base_url")?;
+    let model = get_required_config(model, "model")?;
     let llm_input = history.build_llm_input()?;
     let api_base = normalize_openai_api_base(&base_url);
 
