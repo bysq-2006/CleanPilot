@@ -94,7 +94,8 @@ const error = ref<string | null>(null)
 const groupedRecords = computed(() => {
   const today: HistoryRecordSummary[] = []
   const yesterday: HistoryRecordSummary[] = []
-  const older: HistoryRecordSummary[] = []
+  const withinSevenDays: HistoryRecordSummary[] = []
+  const beforeSevenDays: HistoryRecordSummary[] = []
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
   const yesterdayStart = todayStart - 24 * 60 * 60 * 1000
@@ -110,17 +111,18 @@ const groupedRecords = computed(() => {
       yesterday.push(record)
     }
     else if (updatedAtMs >= sevenDaysStart) {
-      older.push(record)
+      withinSevenDays.push(record)
     }
     else {
-      older.push(record)
+      beforeSevenDays.push(record)
     }
   }
 
   return [
     { title: '今天', items: today },
     { title: '昨天', items: yesterday },
-    { title: '7天之前', items: older },
+    { title: '7天内', items: withinSevenDays },
+    { title: '7天之前', items: beforeSevenDays },
   ].filter(section => section.items.length > 0)
 })
 
@@ -499,36 +501,6 @@ onMounted(() => {
 @keyframes spin {
   to {
     transform: rotate(360deg);
-  }
-}
-
-@media (max-width: 720px) {
-  .chat-records-view {
-    padding: 0.875rem;
-  }
-
-  .record-section-header {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 0.35rem;
-  }
-
-  .record-item {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .record-side {
-    width: 100%;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin-left: 0;
-  }
-
-  .record-time {
-    text-align: left;
   }
 }
 </style>
