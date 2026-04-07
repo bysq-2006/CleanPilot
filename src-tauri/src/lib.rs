@@ -42,6 +42,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::agent::chat,
             commands::agent::get_history,
+            commands::agent::get_agent_status,
             commands::manager_context::list_history_records,
             commands::manager_context::get_current_scene,
             commands::manager_context::create_history_context,

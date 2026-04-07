@@ -1,11 +1,8 @@
 <template>
   <div class="disk-cleanup-view">
-    <div
-      ref="historyScrollContainer"
-      class="history-scroll-container"
-      @scroll="handleHistoryScroll"
-    >
+    <div ref="historyScrollContainer" class="history-scroll-container" @scroll="handleHistoryScroll">
       <ChatHistoryList :messages="messages" :sync-error="syncError" />
+      <AgentWorkingIndicator class="AgentWorkingshow"/>
     </div>
 
     <ChatComposer class="composer-dock" />
@@ -15,6 +12,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
+import AgentWorkingIndicator from '../components/AgentWorkingIndicator.vue'
 import ChatComposer from '../components/ChatComposer.vue'
 import ChatHistoryList from '../components/chat-history/ChatHistoryList.vue'
 import { AgentHistoryStore } from '../composables/useAgentHistory'
@@ -80,6 +78,10 @@ onMounted(async () => {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+}
+
+.AgentWorkingshow {
+  margin-left: 3.8rem;
 }
 
 .composer-dock {

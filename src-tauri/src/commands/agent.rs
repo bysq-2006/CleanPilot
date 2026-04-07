@@ -1,6 +1,7 @@
 use tauri::{AppHandle, Manager};
 
 use crate::agent::context::history::AgentMessage;
+use crate::agent::runtime::AgentStatus;
 use crate::agent::tasks::queue::AgentTask;
 use crate::models::appstore::AppStore;
 
@@ -62,4 +63,27 @@ pub fn debug_print_history(app: AppHandle) -> Result<(), String> {
     println!("Agent 调试输出完整 history: {}", history);
 
     Ok(())
+}
+
+#[tauri::command]
+/// 读取当前 Agent 的运行状态，供前端轮询展示工作中提示。
+pub fn get_agent_status(app: AppHandle) -> Result<String, String> {
+    let store = app.state::<AppStore>();
+    let agent = store
+        .agent
+        .lock()
+        .map_err(|e| format!("Agent 锁获取失败: {}", e))?;
+    let status = agent
+        .as_ref()
+        .ok_or_else(|| "Agent 尚未初始化".to_string())?
+        .status
+        .lock()
+        .map_err(|e| format!("Agent 状态锁获取失败: {}", e))?;
+
+    let value = match *status {
+        AgentStatus::Idle => "idle",
+        AgentStatus::Chatting => "chatting",
+    };
+
+    Ok(value.to_string())
 }
