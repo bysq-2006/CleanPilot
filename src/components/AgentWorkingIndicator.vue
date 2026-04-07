@@ -1,6 +1,9 @@
 <template>
   <div v-if="isWorking" class="agent-working-indicator" role="status" aria-live="polite">
-    <span class="agent-working-indicator__text">CleanPilot 正在思考并生成回复</span>
+    <span
+      class="agent-working-indicator__text"
+      data-text="CleanPilot 正在思考并生成回复"
+    >CleanPilot 正在思考并生成回复</span>
   </div>
 </template>
 
@@ -49,8 +52,14 @@ onMounted(() => {
   font-size: 0.8125rem;
   line-height: 1.5;
   font-weight: 400;
+  color: rgba(138, 148, 163, 0.92);
   white-space: nowrap;
-  color: #8a94a3;
+}
+
+.agent-working-indicator__text::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
   background-image: linear-gradient(
     110deg,
     rgba(138, 148, 163, 0.92) 0%,
@@ -65,15 +74,8 @@ onMounted(() => {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  pointer-events: none;
   animation: text-shimmer 2.8s linear infinite;
-}
-
-@supports not ((-webkit-background-clip: text) or (background-clip: text)) {
-  .agent-working-indicator__text {
-    color: #8a94a3;
-    background-image: none;
-    -webkit-text-fill-color: initial;
-  }
 }
 
 @keyframes text-shimmer {
