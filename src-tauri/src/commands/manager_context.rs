@@ -48,6 +48,14 @@ pub fn create_history_context(app: AppHandle) -> Result<String, String> {
         .as_ref()
         .ok_or_else(|| "Agent 尚未初始化".to_string())?;
 
+    let mut history = agent
+        .history
+        .inner
+        .lock()
+        .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
+    history.clear();
+    drop(history);
+
     store.manager.agent_scene.switch_scene(AgentScene::DiskCleanup, agent)?;
     store.manager.history.set_current_context_id(context_id.clone())?;
 

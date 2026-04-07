@@ -8,43 +8,40 @@
 
       <div class="entry-copy">今天想处理什么问题？</div>
 
-      <div class="entry-composer">
-        <div class="entry-input-shell">
-          <textarea ref="textareaRef" v-model="inputText" rows="1" class="entry-textarea"
-            placeholder="描述你的清理需求，发送后会新建会话并跳转到正式聊天页" :disabled="isSubmitting" @input="resizeTextarea"
-            @keydown.enter.exact.prevent="submitEntry" />
+      <div class="entry-input-shell">
+        <textarea ref="textareaRef" v-model="inputText" rows="1" class="entry-textarea" :placeholder="pagePreset.inputPlaceholder"
+          :disabled="isSubmitting" @input="resizeTextarea" @keydown.enter.exact.prevent="submitEntry" />
 
-          <div class="entry-actions">
-            <button type="button" class="scene-button" :disabled="isSubmitting" :aria-expanded="isModeMenuOpen"
-              @click="toggleModeMenu">
-              <span>{{ selectedSceneLabel }}</span>
-              <img src="/ChevronDown.svg" alt="" class="scene-button-icon" :class="{ 'is-open': isModeMenuOpen }"
-                aria-hidden="true" />
-            </button>
+        <div class="entry-actions">
+          <button type="button" class="scene-button" :disabled="isSubmitting" :aria-expanded="isModeMenuOpen"
+            @click="toggleModeMenu">
+            <span>{{ selectedSceneLabel }}</span>
+            <img src="/ChevronDown.svg" alt="" class="scene-button-icon" :class="{ 'is-open': isModeMenuOpen }"
+              aria-hidden="true" />
+          </button>
 
-            <div v-if="isModeMenuOpen" class="scene-menu">
-              <button type="button" class="scene-menu-item" :class="{ 'is-active': selectedScene === 'disk_cleanup' }"
-                @click="selectMode('disk_cleanup')">
-                <img src="/DiskCleanup.svg" alt="" class="scene-menu-icon" aria-hidden="true" />
-                <span class="scene-menu-label">清理模式</span>
-              </button>
-            </div>
-
-            <button type="button" class="submit-button" :disabled="isSubmitting || !canSubmit" @click="submitEntry">
-              <img src="/send.svg" alt="" class="submit-icon" aria-hidden="true" />
+          <div v-if="isModeMenuOpen" class="scene-menu">
+            <button v-for="scene in pagePreset.sceneOptions" :key="scene.value" type="button" class="scene-menu-item"
+              :class="{ 'is-active': selectedScene === scene.value }" @click="selectMode(scene.value)">
+              <img :src="scene.icon" alt="" class="scene-menu-icon" aria-hidden="true" />
+              <span class="scene-menu-label">{{ scene.label }}</span>
             </button>
           </div>
+
+          <button type="button" class="submit-button" :disabled="isSubmitting || !canSubmit" @click="submitEntry">
+            <img src="/send.svg" alt="" class="submit-icon" aria-hidden="true" />
+          </button>
         </div>
       </div>
 
       <div class="quick-actions">
-        <button v-for="prompt in quickPrompts" :key="prompt" type="button" class="quick-action-chip"
+        <button v-for="prompt in pagePreset.quickPrompts" :key="prompt" type="button" class="quick-action-chip"
           :disabled="isSubmitting" @click="applyQuickPrompt(prompt)">
           {{ prompt }}
         </button>
       </div>
 
-      <div class="entry-tip">发送后会先创建新的历史上下文，再进入聊天页继续回复。</div>
+      <div class="entry-tip">{{ pagePreset.tip }}</div>
     </section>
   </div>
 </template>
@@ -57,6 +54,34 @@ import { useRouter } from 'vue-router'
 import { AgentHistoryStore } from '../composables/useAgentHistory'
 import { pushNotice } from '../composables/useNoticeCenter'
 
+type SceneOption = {
+  value: string
+  label: string
+  icon: string
+}
+
+const pagePreset: {
+  inputPlaceholder: string
+  tip: string
+  quickPrompts: string[]
+  sceneOptions: SceneOption[]
+} = {
+  inputPlaceholder: '描述你的清理需求，发送后会新建会话并跳转到正式聊天页',
+  tip: '发送后会先创建新的历史上下文，再进入聊天页继续回复。',
+  quickPrompts: [
+    '帮我分析当前磁盘占用最大的目录',
+    '帮我找出可以安全清理的大文件',
+    '先扫描 Downloads 和 Desktop 的占用情况',
+  ],
+  sceneOptions: [
+    {
+      value: 'disk_cleanup',
+      label: '清理模式',
+      icon: '/DiskCleanup.svg',
+    },
+  ],
+}
+
 const router = useRouter()
 const agentHistoryStore = new AgentHistoryStore()
 
@@ -68,14 +93,10 @@ const selectedScene = ref('disk_cleanup')
 const minTextareaHeightRem = 3
 const maxTextareaHeightRem = 12
 
-const quickPrompts = [
-  '帮我分析当前磁盘占用最大的目录',
-  '帮我找出可以安全清理的大文件',
-  '先扫描 Downloads 和 Desktop 的占用情况',
-]
-
 const canSubmit = computed(() => inputText.value.trim().length > 0)
-const selectedSceneLabel = computed(() => selectedScene.value === 'disk_cleanup' ? '清理模式' : '选择模式')
+const selectedSceneLabel = computed(
+  () => pagePreset.sceneOptions.find(scene => scene.value === selectedScene.value)?.label ?? '选择模式',
+)
 
 const toggleModeMenu = () => {
   isModeMenuOpen.value = !isModeMenuOpen.value
@@ -202,12 +223,6 @@ onMounted(() => {
   font-weight: 500;
   color: #242424;
   text-align: center;
-}
-
-.entry-composer {
-  width: 100%;
-  display: flex;
-  justify-content: center;
 }
 
 .entry-input-shell {
@@ -374,19 +389,23 @@ onMounted(() => {
   flex-shrink: 0;
   border: 0;
   border-radius: 999px;
-  background: #171717;
-  color: #ffffff;
+  background: #f1f5f9;
+  color: #5f6b7a;
   cursor: pointer;
-  transition: transform 0.16s ease, opacity 0.2s ease, background-color 0.2s ease;
+  border: 0.0625rem solid #dbe3ec;
+  transition: transform 0.16s ease, opacity 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .submit-button:hover:not(:disabled) {
-  background: #000000;
+  background: #e8eef5;
+  border-color: #cfd9e4;
 }
 
 .submit-button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+  background: #f6f8fa;
+  border-color: #e5e9ef;
 }
 
 .submit-icon {

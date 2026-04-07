@@ -3,11 +3,11 @@ use std::{fs, path::PathBuf, sync::{Arc, Mutex}, time::{SystemTime, UNIX_EPOCH}}
 use serde::{Deserialize, Serialize};
 
 use tauri::{AppHandle, Manager};
+use uuid::Uuid;
 
 use crate::agent::context::history::AgentMessage;
 use crate::manager::agent_scene::AgentSceneManager;
 
-const DEFAULT_CONTEXT_ID: &str = "default-session";
 const HISTORY_DIR_NAME: &str = "history";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,7 +38,7 @@ impl HistoryManager {
     pub fn new(app: &AppHandle, agent_scene: Arc<AgentSceneManager>) -> Result<Self, String> {
         Ok(Self {
             agent_scene,
-            current_context_id: Arc::new(Mutex::new(Some(DEFAULT_CONTEXT_ID.to_string()))),
+            current_context_id: Arc::new(Mutex::new(Some(Uuid::new_v4().to_string()))),
             history_dir_path: Arc::new(Mutex::new(
                 app.path()
                     .app_data_dir()
