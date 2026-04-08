@@ -9,15 +9,18 @@ use crate::models::appstore::AppStore;
 
 pub mod agent_scene;
 pub mod history;
+pub mod storage_box;
 
 use self::agent_scene::AgentSceneManager;
 use self::history::HistoryManager;
+use self::storage_box::StorageBoxManager;
 
 /// 管理模块入口。
 #[derive(Debug, Clone, Default)]
 pub struct ManagerModule {
     pub agent_scene: Arc<AgentSceneManager>,
     pub history: Arc<HistoryManager>,
+    pub storage_box: Arc<StorageBoxManager>,
 }
 
 impl ManagerModule {
@@ -27,9 +30,11 @@ impl ManagerModule {
         Ok(Self {
             history: Arc::new(HistoryManager::new(app, Arc::clone(&agent_scene))?),
             agent_scene,
+            storage_box: Arc::new(StorageBoxManager::new(app)?),
         })
     }
 
+    /// 启动自动保存功能，定期检查 Agent 状态并保存历史记录。
     pub fn start_auto_save(&self, app: AppHandle) {
         let manager = Arc::clone(&app.state::<AppStore>().manager);
 

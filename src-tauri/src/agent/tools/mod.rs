@@ -31,6 +31,7 @@ impl ToolManager {
             disk_cleanup::list_directory::register(),
             disk_cleanup::disk_info::register(),
             disk_cleanup::find_large_entries::register(),
+            disk_cleanup::write_storage_box_checklist::register(),
             utility::file_read::register(),
             utility::http_request::register(),
         ];
