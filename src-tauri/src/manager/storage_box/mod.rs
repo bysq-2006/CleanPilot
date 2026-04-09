@@ -3,6 +3,7 @@ pub mod file_ops;
 use std::{fs, path::PathBuf, sync::{Arc, Mutex}, time::{SystemTime, UNIX_EPOCH}};
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tauri::{AppHandle, Manager};
 
 const STORAGE_BOX_DIR_NAME: &str = "storage_box";
@@ -10,20 +11,13 @@ const STORAGE_BOX_DIR_NAME: &str = "storage_box";
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageBoxRecord {
     pub file_name: String,
-    pub content: String,
-    pub saved_at: u64,
-    pub task_type: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StorageBoxRecordMeta {
-    pub file_name: String,
+    pub content: Value,
     pub saved_at: u64,
     pub task_type: String,
 }
 
 impl StorageBoxRecord {
-    pub fn new(file_name: String, content: String, task_type: String) -> Result<Self, String> {
+    pub fn new(file_name: String, content: Value, task_type: String) -> Result<Self, String> {
         let file_name = file_name.trim().to_string();
         if file_name.is_empty() {
             return Err("文件名不能为空".to_string());
@@ -47,13 +41,6 @@ impl StorageBoxRecord {
         })
     }
 
-    pub fn meta(&self) -> StorageBoxRecordMeta {
-        StorageBoxRecordMeta {
-            file_name: self.file_name.clone(),
-            saved_at: self.saved_at,
-            task_type: self.task_type.clone(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -76,7 +63,7 @@ impl StorageBoxManager {
     pub fn save_new_record(
         &self,
         file_name: String,
-        content: String,
+        content: Value,
         task_type: String,
     ) -> Result<(), String> {
         let record = StorageBoxRecord::new(file_name, content, task_type)?;
@@ -90,6 +77,17 @@ impl StorageBoxManager {
 
         serde_json::from_str(&content)
             .map_err(|e| format!("反序列化 Storage Box 记录失败: {}", e))
+    }
+
+    pub fn delete_record(&self, file_name: String) -> Result<(), String> {
+        let file_path = self.resolve_file_path(&file_name)?;
+
+        if !file_path.exists() {
+            return Err(format!("Storage Box 文件不存在: {}", file_name));
+        }
+
+        fs::remove_file(&file_path)
+            .map_err(|e| format!("删除 Storage Box 文件失败: {}", e))
     }
 
     fn get_storage_box_dir_path(&self) -> Result<PathBuf, String> {
@@ -108,6 +106,15 @@ impl StorageBoxManager {
         Ok(self.get_storage_box_dir_path()?.join(file_name))
     }
 
+    pub fn operate_record_file<T>(
+        &self,
+        file_name: &str,
+        operation: impl FnOnce(&std::path::Path) -> Result<T, String>,
+    ) -> Result<T, String> {
+        let file_path = self.resolve_file_path(file_name)?;
+        operation(&file_path)
+    }
+
     pub fn save_record(&self, record: &StorageBoxRecord) -> Result<(), String> {
         let storage_box_dir_path = self.get_storage_box_dir_path()?;
 
@@ -124,8 +131,8 @@ impl StorageBoxManager {
         Ok(())
     }
 
-    /// 列出 Storage Box 中所有记录的元信息，按保存时间倒序排序。
-    pub fn list_record_metas(&self) -> Result<Vec<StorageBoxRecordMeta>, String> {
+    /// 列出 Storage Box 中所有记录，按保存时间倒序排序。
+    pub fn list_records(&self) -> Result<Vec<StorageBoxRecord>, String> {
         let storage_box_dir_path = self.get_storage_box_dir_path()?;
 
         if !storage_box_dir_path.exists() {
@@ -149,7 +156,7 @@ impl StorageBoxManager {
             let record: StorageBoxRecord = serde_json::from_str(&content)
                 .map_err(|e| format!("反序列化 Storage Box 记录失败: {}", e))?;
 
-            records.push(record.meta());
+            records.push(record);
         }
 
         records.sort_by(|a, b| {

@@ -23,6 +23,9 @@
         :class="`storage-box-card-${taskTheme(record.task_type).theme}`"
         role="button"
         tabindex="0"
+        @click="handleOpen(record.file_name)"
+        @keydown.enter.prevent="handleOpen(record.file_name)"
+        @keydown.space.prevent="handleOpen(record.file_name)"
       >
         <div class="storage-box-card-top">
           <span class="storage-box-task-badge">{{ taskTheme(record.task_type).label }}</span>
@@ -49,16 +52,23 @@
 import { invoke } from '@tauri-apps/api/core'
 import { onMounted, ref } from 'vue'
 
+// 存储箱记录类型
 interface StorageBoxRecordMeta {
   file_name: string
+  content: unknown
   saved_at: number
   task_type: string
 }
 
+// 存储箱页面状态
 const records = ref<StorageBoxRecordMeta[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
+const emit = defineEmits<{
+  openGhostBlanket: [payload: { path: string, type: string }]
+}>()
 
+// 卡片展示格式化
 const taskTheme = (taskType: string) => taskType === 'disk_cleanup'
   ? { label: '清理', theme: 'cleanup' }
   : { label: taskType || '任务', theme: 'default' }
@@ -84,6 +94,7 @@ function formatRelativeTime(timestamp: number) {
   return `${Math.max(1, Math.floor(diffMs / day))} 天前`
 }
 
+// 存储箱记录加载
 async function loadStorageBoxRecords() {
   loading.value = true
 
@@ -99,11 +110,21 @@ async function loadStorageBoxRecords() {
   }
 }
 
+// 删除卡片操作
 async function handleDelete(fileName: string) {
-  await invoke('trash_storage_box_path', { path: fileName })
+  await invoke('delete_storage_box_record', { path: fileName })
   records.value = records.value.filter(record => record.file_name !== fileName)
 }
 
+function handleOpen(recordPath: string) {
+  const record = records.value.find(item => item.file_name === recordPath)
+  if (!record)
+    return
+
+  emit('openGhostBlanket', { path: recordPath, type: record.task_type })
+}
+
+// 页面初始化
 onMounted(() => {
   void loadStorageBoxRecords()
 })
