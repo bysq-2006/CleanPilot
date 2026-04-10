@@ -101,14 +101,6 @@ fn append_empty_assistant_message(runtime: &AgentRuntime) -> Result<(), String> 
     })
 }
 
-fn sync_last_message(runtime: &AgentRuntime, content: &str) {
-    if let Err(e) = runtime.history.update_last_message(|message| {
-        message.content = Some(content.to_string());
-    }) {
-        eprintln!("Agent 更新最后一条 Assistant 消息失败: {}", e);
-    }
-}
-
 fn sync_content_message(
     runtime: &AgentRuntime,
     raw_reply: &str,
@@ -146,7 +138,11 @@ fn sync_content_message(
     }
 
     let decoded = decode_escaped_text(&raw_reply[start..end]);
-    sync_last_message(runtime, &decoded);
+    if let Err(e) = runtime.history.update_last_message(|m| {
+        m.content = Some(decoded);
+    }) {
+        eprintln!("Agent 更新最后一条 Assistant 消息失败: {}", e);
+    }
 }
 
 fn extract_tool_calls(raw_reply: &str) -> Option<String> {

@@ -12,6 +12,7 @@ import ToolFindLargeEntriesMessage from './disk_cleanup/ToolFindLargeEntriesMess
 import ToolListDirectoryMessage from './disk_cleanup/ToolListDirectoryMessage.vue'
 import ToolFileReadMessage from './utility/ToolFileReadMessage.vue'
 import ToolHttpRequestMessage from './utility/ToolHttpRequestMessage.vue'
+import ToolWriteStorageBoxChecklistMessage from './disk_cleanup/ToolWriteStorageBoxChecklistMessage.vue'
 
 const props = defineProps<{
   message: AgentMessage
@@ -24,6 +25,7 @@ const toolComponentMap: Record<string, unknown> = {
   find_large_entries: ToolFindLargeEntriesMessage,
   get_disk_info: ToolDiskInfoMessage,
   list_directory: ToolListDirectoryMessage,
+  write_storage_box_checklist: ToolWriteStorageBoxChecklistMessage,
 }
 
 const selectedComponent = computed(() => {
