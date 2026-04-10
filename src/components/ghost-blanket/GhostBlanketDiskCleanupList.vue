@@ -25,18 +25,17 @@ const props = defineProps<{
   recordPath: string
 }>()
 
+const emit = defineEmits<{
+  refresh: []
+}>()
+
 async function handleReveal(path: string) {
   await invoke('reveal_storage_box_path', { path })
 }
 
 async function handleTrash(path: string) {
   await invoke('trash_storage_box_path', { path })
-
-  const nextItems = props.items.filter(item => item.path !== path)
-  await invoke('save_disk_cleanup_items', {
-    path: props.recordPath,
-    items: nextItems,
-  })
+  emit('refresh')
 }
 </script>
 

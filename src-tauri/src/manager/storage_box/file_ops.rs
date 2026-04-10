@@ -39,6 +39,36 @@ pub fn move_to_trash(path: &Path) -> Result<(), String> {
         return Err(format!("路径不存在: {}", path.display()));
     }
 
+    if path.is_dir() {
+        return move_directory_contents_to_trash(path);
+    }
+
     trash::delete(path)
         .map_err(|e| format!("移动到系统回收站失败: {}", e))
+}
+
+fn move_directory_contents_to_trash(dir: &Path) -> Result<(), String> {
+    let entries = std::fs::read_dir(dir)
+        .map_err(|e| format!("读取目录失败，无法移入回收站: {}", e))?;
+
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("遍历目录失败，无法移入回收站: {}", e))?;
+        let entry_path = entry.path();
+
+        if entry_path.is_dir() {
+            move_directory_contents_to_trash(&entry_path)?;
+        }
+        else {
+            trash::delete(&entry_path).map_err(|e| {
+                format!(
+                    "移动目录内文件到系统回收站失败: {} | 路径: {}",
+                    e,
+                    entry_path.display()
+                )
+            })?;
+        }
+    }
+
+    trash::delete(dir)
+        .map_err(|e| format!("移动目录到系统回收站失败: {} | 路径: {}", e, dir.display()))
 }

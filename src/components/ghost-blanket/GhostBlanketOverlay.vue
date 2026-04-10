@@ -15,6 +15,7 @@
             v-else-if="record && type === 'disk_cleanup'"
             :items="diskCleanupItems"
             :record-path="modelValue!"
+            @refresh="handleRefreshDiskCleanupItems"
           />
           <div v-else-if="record" class="ghost-blanket-placeholder">暂不支持该类型的渲染</div>
           <div v-else class="ghost-blanket-placeholder"></div>
@@ -50,6 +51,13 @@ const error = ref<string | null>(null)
 const record = ref<StorageBoxRecord | null>(null)
 const diskCleanupItems = ref<{ path: string, purpose: string }[]>([])
 
+async function handleRefreshDiskCleanupItems() {
+  if (!props.modelValue || props.type !== 'disk_cleanup')
+    return
+
+  diskCleanupItems.value = await invoke<{ path: string, purpose: string }[]>('get_disk_cleanup_items', { path: props.modelValue })
+}
+
 watch(
   () => [props.modelValue, props.type] as const,
   async ([path, type]) => {
@@ -68,7 +76,7 @@ watch(
       record.value = await invoke<StorageBoxRecord>('get_storage_box_record', { path })
 
       if (type === 'disk_cleanup') {
-        diskCleanupItems.value = await invoke<{ path: string, purpose: string }[]>('get_disk_cleanup_items', { path })
+        await handleRefreshDiskCleanupItems()
       }
       else {
         diskCleanupItems.value = []

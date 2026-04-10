@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
@@ -44,13 +44,18 @@ fn call(
             return Err(format!("目标不是目录: {}", path.display()));
         }
 
-        let mut lines = vec![format!("目录: {}", path.display())];
-        let entries = fs::read_dir(path)
+        let canonical_root = path
+            .canonicalize()
+            .map_err(|e| format!("目录路径解析失败: {}", e))?;
+
+        let mut lines = vec![format!("目录: {}", canonical_root.display())];
+        let entries = fs::read_dir(&canonical_root)
             .map_err(|e| format!("读取目录失败: {}", e))?;
 
         for entry in entries {
             let entry = entry.map_err(|e| format!("读取目录项失败: {}", e))?;
             let entry_path = entry.path();
+            let display_path = canonicalize_for_display(&entry_path);
             let metadata = entry
                 .metadata()
                 .map_err(|e| format!("读取文件元数据失败: {}", e))?;
@@ -64,11 +69,15 @@ fn call(
                 name,
                 kind,
                 size,
-                entry_path.display()
+                display_path.display()
             ));
         }
 
         Ok(lines.join("\n"))
     })
+}
+
+fn canonicalize_for_display(path: &Path) -> PathBuf {
+    path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
 }
 

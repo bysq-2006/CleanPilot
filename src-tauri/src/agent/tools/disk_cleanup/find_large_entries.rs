@@ -47,11 +47,15 @@ fn call(
             return Err(format!("目标不是目录: {}", root.display()));
         }
 
+        let canonical_root = root
+            .canonicalize()
+            .map_err(|e| format!("目录路径解析失败: {}", e))?;
+
         let mut directory_sizes: HashMap<PathBuf, u64> = HashMap::new();
         let mut large_files: Vec<(u64, String)> = Vec::new();
         let mut skipped_paths = Vec::new();
 
-        for entry in WalkDir::new(root) {
+        for entry in WalkDir::new(&canonical_root) {
             let entry = match entry {
                 Ok(entry) => entry,
                 Err(e) => {
@@ -60,13 +64,14 @@ fn call(
                 }
             };
             let entry_path = entry.path();
+            let display_path = canonicalize_for_display(entry_path);
             let metadata = match entry.metadata() {
                 Ok(metadata) => metadata,
                 Err(e) => {
                     skipped_paths.push(format!(
                         "- 元数据跳过: {} | 路径: {}",
                         e,
-                        entry_path.display()
+                        display_path.display()
                     ));
                     continue;
                 }
@@ -81,14 +86,14 @@ fn call(
                         format!(
                             "- 类型: 文件 | 大小: {} 字节 | 路径: {}",
                             file_size,
-                            entry_path.display()
+                            display_path.display()
                         ),
                     ));
                 }
 
                 let mut current = entry_path.parent();
                 while let Some(parent) = current {
-                    if !parent.starts_with(root) {
+                    if !parent.starts_with(&canonical_root) {
                         break;
                     }
 
@@ -109,7 +114,7 @@ fn call(
                     format!(
                         "- 类型: 文件夹 | 大小: {} 字节 | 路径: {}",
                         size,
-                        path.display()
+                        canonicalize_for_display(&path).display()
                     ),
                 )
             })
@@ -120,7 +125,7 @@ fn call(
 
         let mut lines = vec![format!(
             "扫描目录: {}\n筛选条件: 大于等于 {} MB",
-            root.display(),
+            canonical_root.display(),
             args.min_size_mb
         )];
 
@@ -149,4 +154,8 @@ fn call(
 
         Ok(lines.join("\n"))
     })
+}
+
+fn canonicalize_for_display(path: &Path) -> PathBuf {
+    path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
 }
