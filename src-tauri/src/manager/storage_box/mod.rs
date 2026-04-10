@@ -1,6 +1,6 @@
 pub mod file_ops;
 
-use std::{fs, path::PathBuf, sync::{Arc, Mutex}, time::{SystemTime, UNIX_EPOCH}};
+use std::{fs, path::PathBuf, sync::Arc, time::{SystemTime, UNIX_EPOCH}};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -43,20 +43,20 @@ impl StorageBoxRecord {
 
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct StorageBoxManager {
-    pub storage_box_dir_path: Arc<Mutex<PathBuf>>,
+    pub path: Arc<PathBuf>,
 }
 
 impl StorageBoxManager {
     pub fn new(app: &AppHandle) -> Result<Self, String> {
         Ok(Self {
-            storage_box_dir_path: Arc::new(Mutex::new(
+            path: Arc::new(
                 app.path()
                     .app_data_dir()
                     .map_err(|e| format!("无法获取应用数据目录: {}", e))?
                     .join(STORAGE_BOX_DIR_NAME),
-            )),
+            ),
         })
     }
 
@@ -90,20 +90,13 @@ impl StorageBoxManager {
             .map_err(|e| format!("删除 Storage Box 文件失败: {}", e))
     }
 
-    fn get_storage_box_dir_path(&self) -> Result<PathBuf, String> {
-        self.storage_box_dir_path
-            .lock()
-            .map_err(|e| format!("Storage Box 目录锁获取失败: {}", e))
-            .map(|path| path.clone())
-    }
-
     fn resolve_file_path(&self, file_name: &str) -> Result<PathBuf, String> {
         let file_name = file_name.trim();
         if file_name.is_empty() {
             return Err("文件名不能为空".to_string());
         }
 
-        Ok(self.get_storage_box_dir_path()?.join(file_name))
+        Ok(self.path.join(file_name))
     }
 
     pub fn operate_record_file<T>(
@@ -116,9 +109,7 @@ impl StorageBoxManager {
     }
 
     pub fn save_record(&self, record: &StorageBoxRecord) -> Result<(), String> {
-        let storage_box_dir_path = self.get_storage_box_dir_path()?;
-
-        fs::create_dir_all(&storage_box_dir_path)
+        fs::create_dir_all(&*self.path)
             .map_err(|e| format!("创建 Storage Box 目录失败: {}", e))?;
 
         let file_path = self.resolve_file_path(&record.file_name)?;
@@ -126,22 +117,18 @@ impl StorageBoxManager {
             .map_err(|e| format!("序列化 Storage Box 记录失败: {}", e))?;
 
         fs::write(&file_path, content)
-            .map_err(|e| format!("写入 Storage Box 文件失败: {}", e))?;
-
-        Ok(())
+            .map_err(|e| format!("写入 Storage Box 文件失败: {}", e))
     }
 
     /// 列出 Storage Box 中所有记录，按保存时间倒序排序。
     pub fn list_records(&self) -> Result<Vec<StorageBoxRecord>, String> {
-        let storage_box_dir_path = self.get_storage_box_dir_path()?;
-
-        if !storage_box_dir_path.exists() {
+        if !self.path.exists() {
             return Ok(Vec::new());
         }
 
         let mut records = Vec::new();
 
-        for entry in fs::read_dir(&storage_box_dir_path)
+        for entry in fs::read_dir(&*self.path)
             .map_err(|e| format!("读取 Storage Box 目录失败: {}", e))?
         {
             let entry = entry.map_err(|e| format!("遍历 Storage Box 目录失败: {}", e))?;
