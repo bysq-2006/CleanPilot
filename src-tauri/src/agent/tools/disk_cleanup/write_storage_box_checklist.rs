@@ -1,5 +1,6 @@
 use crate::agent::runtime::AgentRuntime;
 use crate::agent::tools::{ToolDefinition, ToolFuture};
+use crate::models::event_delegate::EventDelegate;
 
 pub fn register() -> ToolDefinition {
     ToolDefinition {
@@ -10,8 +11,15 @@ pub fn register() -> ToolDefinition {
     }
 }
 
-fn call(runtime: AgentRuntime, payload: String) -> ToolFuture {
+fn call(
+    runtime: AgentRuntime,
+    event_delegate: EventDelegate,
+    payload: String,
+) -> ToolFuture {
     Box::pin(async move {
+        let _ = runtime;
+        let _ = event_delegate;
+        let _ = payload;
         Ok("write_storage_box_checklist 工具尚未实现".to_string())
     })
 }

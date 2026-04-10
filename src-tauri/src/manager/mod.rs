@@ -6,6 +6,7 @@ use tokio::time::sleep;
 
 use crate::agent::runtime::AgentStatus;
 use crate::models::appstore::AppStore;
+use crate::models::event_delegate::EventDelegate;
 
 pub mod agent_scene;
 pub mod history;
@@ -16,21 +17,24 @@ use self::history::HistoryManager;
 use self::storage_box::StorageBoxManager;
 
 /// 管理模块入口。
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct ManagerModule {
     pub agent_scene: Arc<AgentSceneManager>,
     pub history: Arc<HistoryManager>,
     pub storage_box: Arc<StorageBoxManager>,
+    pub event_delegate: EventDelegate,
 }
 
 impl ManagerModule {
-    pub fn new(app: &AppHandle) -> Result<Self, String> {
+    pub fn new(app: &AppHandle, event_delegate: EventDelegate) -> Result<Self, String> {
         let agent_scene = Arc::new(AgentSceneManager::new());
+        let storage_box = Arc::new(StorageBoxManager::new(app)?);
 
         Ok(Self {
             history: Arc::new(HistoryManager::new(app, Arc::clone(&agent_scene))?),
             agent_scene,
-            storage_box: Arc::new(StorageBoxManager::new(app)?),
+            storage_box: Arc::clone(&storage_box),
+            event_delegate,
         })
     }
 

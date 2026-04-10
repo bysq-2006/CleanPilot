@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use tokio::sync::mpsc;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EventDelegate {
     pub sender: mpsc::Sender<String>,
     pub receiver: Arc<Mutex<Option<mpsc::Receiver<String>>>>,

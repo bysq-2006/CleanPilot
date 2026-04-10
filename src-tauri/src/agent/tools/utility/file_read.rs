@@ -5,6 +5,7 @@ use serde::Deserialize;
 
 use crate::agent::runtime::AgentRuntime;
 use crate::agent::tools::{ToolDefinition, ToolFuture};
+use crate::models::event_delegate::EventDelegate;
 
 #[derive(Deserialize)]
 struct FileReadArgs {
@@ -21,7 +22,11 @@ pub fn register() -> ToolDefinition {
     }
 }
 
-fn call(_runtime: AgentRuntime, payload: String) -> ToolFuture {
+fn call(
+    _runtime: AgentRuntime,
+    _event_delegate: EventDelegate,
+    payload: String,
+) -> ToolFuture {
     Box::pin(async move {
         let args: FileReadArgs = serde_json::from_str(&payload)
             .map_err(|e| format!("文件读取失败\n参数解析失败: {}", e))?;

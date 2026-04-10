@@ -2,11 +2,12 @@ mod disk_cleanup;
 mod utility;
 
 use crate::agent::runtime::AgentRuntime;
+use crate::models::event_delegate::EventDelegate;
 use std::future::Future;
 use std::pin::Pin;
 
 pub type ToolFuture = Pin<Box<dyn Future<Output = Result<String, String>> + Send>>;
-pub type ToolHandler = fn(AgentRuntime, String) -> ToolFuture;
+pub type ToolHandler = fn(AgentRuntime, EventDelegate, String) -> ToolFuture;
 
 const ENABLE_ALL_TOOLS: &str = "*";
 
@@ -76,6 +77,6 @@ impl ToolManager {
             .find(|tool| tool.name == name)
             .ok_or_else(|| format!("未找到工具: {}", name))?;
 
-        (tool.handler)(runtime.clone(), payload.to_string()).await
+        (tool.handler)(runtime.clone(), runtime.event_delegate.clone(), payload.to_string()).await
     }
 }

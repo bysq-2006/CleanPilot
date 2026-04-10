@@ -18,12 +18,13 @@ pub struct AppStore {
 impl AppStore {
     pub fn new(app: &AppHandle) -> Result<Self, String> {
         let config = Arc::new(Mutex::new(Config::default()));
+        let event_delegate = EventDelegate::new(32);
 
         Ok(Self {
             agent: Arc::new(Mutex::new(None)),
             config,
-            manager: Arc::new(ManagerModule::new(app)?),
-            event_delegate: EventDelegate::new(32),
+            manager: Arc::new(ManagerModule::new(app, event_delegate.clone())?),
+            event_delegate,
         })
     }
 
@@ -33,7 +34,10 @@ impl AppStore {
             .lock()
             .map_err(|e| format!("Agent 锁获取失败: {}", e))?;
 
-        let runtime = AgentRuntime::new(Arc::clone(&self.config));
+        let runtime = AgentRuntime::new(
+            Arc::clone(&self.config),
+            self.event_delegate.clone(),
+        );
         self.manager
             .agent_scene
             .switch_scene(

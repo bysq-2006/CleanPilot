@@ -4,6 +4,7 @@ use serde::Deserialize;
 
 use crate::agent::runtime::AgentRuntime;
 use crate::agent::tools::{ToolDefinition, ToolFuture};
+use crate::models::event_delegate::EventDelegate;
 
 #[derive(Deserialize)]
 struct DiskInfoArgs {
@@ -19,7 +20,11 @@ pub fn register() -> ToolDefinition {
     }
 }
 
-fn call(_runtime: AgentRuntime, payload: String) -> ToolFuture {
+fn call(
+    _runtime: AgentRuntime,
+    _event_delegate: EventDelegate,
+    payload: String,
+) -> ToolFuture {
     Box::pin(async move {
         let args: DiskInfoArgs = serde_json::from_str(&payload)
             .map_err(|e| format!("参数解析失败: {}", e))?;

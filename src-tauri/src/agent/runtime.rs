@@ -9,6 +9,7 @@ use super::tasks;
 use super::tasks::queue::AgentTaskQueue;
 use super::tools::ToolManager;
 use crate::models::config::Config;
+use crate::models::event_delegate::EventDelegate;
 use std::sync::{Arc, Mutex};
 use tokio::time::sleep;
 
@@ -25,10 +26,14 @@ pub struct AgentRuntime {
     pub llm: AgentLlm,
     pub tools: Arc<Mutex<ToolManager>>,
     pub status: Arc<Mutex<AgentStatus>>,
+    pub event_delegate: EventDelegate,
 }
 
 impl AgentRuntime {
-    pub fn new(config: Arc<Mutex<Config>>) -> Self {
+    pub fn new(
+        config: Arc<Mutex<Config>>,
+        event_delegate: EventDelegate,
+    ) -> Self {
         let tools = ToolManager::new("*");
         let history = AgentHistory::new();
         history
@@ -43,6 +48,7 @@ impl AgentRuntime {
             llm: AgentLlm::new(config),
             tools: Arc::new(Mutex::new(tools)),
             status: Arc::new(Mutex::new(AgentStatus::Idle)),
+            event_delegate,
         }
     }
 
