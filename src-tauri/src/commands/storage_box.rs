@@ -51,12 +51,3 @@ pub fn reveal_storage_box_path(app: AppHandle, path: String) -> Result<(), Strin
         .storage_box
         .operate_record_file(&path, file_ops::reveal_in_file_manager)
 }
-
-#[tauri::command]
-pub fn trash_storage_box_path(app: AppHandle, path: String) -> Result<(), String> {
-    let store = app.state::<AppStore>();
-    store
-        .manager
-        .storage_box
-        .operate_record_file(&path, file_ops::move_to_trash)
-}

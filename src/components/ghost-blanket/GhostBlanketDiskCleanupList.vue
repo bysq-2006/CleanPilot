@@ -7,10 +7,7 @@
       <div class="ghost-disk-purpose">{{ item.purpose }}</div>
       <div class="ghost-disk-actions">
         <button type="button" class="ghost-disk-action ghost-disk-action-secondary" @click="handleReveal(item.path)">
-          打开文件
-        </button>
-        <button type="button" class="ghost-disk-action ghost-disk-action-danger" @click="handleTrash(item.path)">
-          移到回收站
+          打开文件夹
         </button>
       </div>
     </article>
@@ -40,11 +37,6 @@ async function handleReveal(path: string) {
   await invoke('reveal_storage_box_path', { path })
 }
 
-async function handleTrash(path: string) {
-  await invoke('trash_storage_box_path', { path })
-  items.value = items.value.filter(item => item.path !== path)
-  await invoke('save_disk_cleanup_items', { path: props.recordPath, items: items.value })
-}
 </script>
 
 <style scoped>

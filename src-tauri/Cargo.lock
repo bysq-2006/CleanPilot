@@ -516,6 +516,7 @@ name = "clean-pilot"
 version = "0.1.0"
 dependencies = [
  "async-openai",
+ "dunce",
  "futures-util",
  "reqwest 0.12.28",
  "serde",

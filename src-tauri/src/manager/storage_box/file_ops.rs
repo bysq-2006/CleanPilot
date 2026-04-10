@@ -40,35 +40,24 @@ pub fn move_to_trash(path: &Path) -> Result<(), String> {
     }
 
     if path.is_dir() {
-        return move_directory_contents_to_trash(path);
-    }
+        // 对于目录，只清理内部的直接子项，保留目录本身。
+        // 每个子文件夹作为整体移入回收站，不递归拆散，保证速度和可恢复性。
+        let entries = std::fs::read_dir(path)
+            .map_err(|e| format!("读取目录失败: {} | 路径: {}", e, path.display()))?;
 
-    trash::delete(path)
-        .map_err(|e| format!("移动到系统回收站失败: {}", e))
-}
-
-fn move_directory_contents_to_trash(dir: &Path) -> Result<(), String> {
-    let entries = std::fs::read_dir(dir)
-        .map_err(|e| format!("读取目录失败，无法移入回收站: {}", e))?;
-
-    for entry in entries {
-        let entry = entry.map_err(|e| format!("遍历目录失败，无法移入回收站: {}", e))?;
-        let entry_path = entry.path();
-
-        if entry_path.is_dir() {
-            move_directory_contents_to_trash(&entry_path)?;
-        }
-        else {
-            trash::delete(&entry_path).map_err(|e| {
-                format!(
-                    "移动目录内文件到系统回收站失败: {} | 路径: {}",
-                    e,
-                    entry_path.display()
-                )
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("遍历目录失败: {}", e))?;
+            let child = entry.path();
+            let clean = dunce::simplified(&child);
+            trash::delete(clean).map_err(|e| {
+                format!("移动到系统回收站失败: {} | 路径: {}", e, clean.display())
             })?;
         }
-    }
 
-    trash::delete(dir)
-        .map_err(|e| format!("移动目录到系统回收站失败: {} | 路径: {}", e, dir.display()))
+        Ok(())
+    } else {
+        let clean_path = dunce::simplified(path);
+        trash::delete(clean_path)
+            .map_err(|e| format!("移动到系统回收站失败: {} | 路径: {}", e, clean_path.display()))
+    }
 }
