@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 use tauri::AppHandle;
 
 use super::config::Config;
+use super::event_delegate::EventDelegate;
 use crate::agent::runtime::AgentRuntime;
 use crate::manager::ManagerModule;
 
@@ -11,6 +12,7 @@ pub struct AppStore {
     pub agent: Arc<Mutex<Option<AgentRuntime>>>,
     pub config: Arc<Mutex<Config>>,
     pub manager: Arc<ManagerModule>,
+    pub event_delegate: EventDelegate,
 }
 
 impl AppStore {
@@ -21,6 +23,7 @@ impl AppStore {
             agent: Arc::new(Mutex::new(None)),
             config,
             manager: Arc::new(ManagerModule::new(app)?),
+            event_delegate: EventDelegate::new(32),
         })
     }
 

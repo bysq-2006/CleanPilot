@@ -60,16 +60,6 @@ impl StorageBoxManager {
         })
     }
 
-    pub fn save_new_record(
-        &self,
-        file_name: String,
-        content: Value,
-        task_type: String,
-    ) -> Result<(), String> {
-        let record = StorageBoxRecord::new(file_name, content, task_type)?;
-        self.save_record(&record)
-    }
-
     pub fn read_record(&self, file_name: String) -> Result<StorageBoxRecord, String> {
         let file_path = self.resolve_file_path(&file_name)?;
         let content = fs::read_to_string(&file_path)
