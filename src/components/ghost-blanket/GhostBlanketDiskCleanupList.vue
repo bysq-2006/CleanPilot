@@ -19,15 +19,22 @@
 
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
+import { onMounted, ref } from 'vue'
 
 const props = defineProps<{
-  items: { path: string, purpose: string }[]
   recordPath: string
 }>()
 
-const emit = defineEmits<{
-  refresh: []
-}>()
+interface DiskCleanupItem {
+  path: string
+  purpose: string
+}
+
+const items = ref<DiskCleanupItem[]>([])
+
+onMounted(async () => {
+  items.value = await invoke<DiskCleanupItem[]>('get_disk_cleanup_items', { path: props.recordPath })
+})
 
 async function handleReveal(path: string) {
   await invoke('reveal_storage_box_path', { path })
@@ -35,7 +42,8 @@ async function handleReveal(path: string) {
 
 async function handleTrash(path: string) {
   await invoke('trash_storage_box_path', { path })
-  emit('refresh')
+  items.value = items.value.filter(item => item.path !== path)
+  await invoke('save_disk_cleanup_items', { path: props.recordPath, items: items.value })
 }
 </script>
 

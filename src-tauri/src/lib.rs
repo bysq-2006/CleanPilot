@@ -50,7 +50,6 @@ pub fn run() {
             commands::manager_context::switch_current_scene,
             commands::manager_context::delete_history_context,
             commands::storage_box::list_storage_box_record_metas,
-            commands::storage_box::get_storage_box_record,
             commands::storage_box::get_disk_cleanup_items,
             commands::storage_box::save_disk_cleanup_items,
             commands::storage_box::delete_storage_box_record,

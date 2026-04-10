@@ -17,13 +17,6 @@ pub fn list_storage_box_record_metas(app: AppHandle) -> Result<Vec<StorageBoxRec
     store.manager.storage_box.list_records()
 }
 
-/// 获取“任务型存储”里某条记录的详细信息
-#[tauri::command]
-pub fn get_storage_box_record(app: AppHandle, path: String) -> Result<StorageBoxRecord, String> {
-    let store = app.state::<AppStore>();
-    store.manager.storage_box.read_record(path)
-}
-
 #[tauri::command]
 pub fn get_disk_cleanup_items(app: AppHandle, path: String) -> Result<Vec<DiskCleanupItem>, String> {
     let store = app.state::<AppStore>();

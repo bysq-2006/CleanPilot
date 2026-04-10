@@ -7,18 +7,11 @@
           </button>
 
         <div class="ghost-blanket-card-body">
-          <div v-if="loading" class="ghost-blanket-placeholder">加载中...</div>
-          <div v-else-if="error" class="ghost-blanket-placeholder ghost-blanket-placeholder-error">
-            {{ error }}
-          </div>
           <GhostBlanketDiskCleanupList
-            v-else-if="record && type === 'disk_cleanup'"
-            :items="diskCleanupItems"
+            v-if="type === 'disk_cleanup'"
             :record-path="modelValue!"
-            @refresh="handleRefreshDiskCleanupItems"
           />
-          <div v-else-if="record" class="ghost-blanket-placeholder">暂不支持该类型的渲染</div>
-          <div v-else class="ghost-blanket-placeholder"></div>
+          <div v-else class="ghost-blanket-placeholder">暂不支持该类型的渲染</div>
         </div>
       </div>
     </div>
@@ -26,16 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
-import { ref, watch } from 'vue'
 import GhostBlanketDiskCleanupList from './GhostBlanketDiskCleanupList.vue'
-
-interface StorageBoxRecord {
-  file_name: string
-  content: unknown
-  saved_at: number
-  task_type: string
-}
 
 const props = defineProps<{
   modelValue: string | null
@@ -45,54 +29,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
 }>()
-
-const loading = ref(false)
-const error = ref<string | null>(null)
-const record = ref<StorageBoxRecord | null>(null)
-const diskCleanupItems = ref<{ path: string, purpose: string }[]>([])
-
-async function handleRefreshDiskCleanupItems() {
-  if (!props.modelValue || props.type !== 'disk_cleanup')
-    return
-
-  diskCleanupItems.value = await invoke<{ path: string, purpose: string }[]>('get_disk_cleanup_items', { path: props.modelValue })
-}
-
-watch(
-  () => [props.modelValue, props.type] as const,
-  async ([path, type]) => {
-    if (!path) {
-      loading.value = false
-      error.value = null
-      record.value = null
-      diskCleanupItems.value = []
-      return
-    }
-
-    loading.value = true
-    error.value = null
-
-    try {
-      record.value = await invoke<StorageBoxRecord>('get_storage_box_record', { path })
-
-      if (type === 'disk_cleanup') {
-        await handleRefreshDiskCleanupItems()
-      }
-      else {
-        diskCleanupItems.value = []
-      }
-    }
-    catch (err) {
-      record.value = null
-      diskCleanupItems.value = []
-      error.value = err instanceof Error ? err.message : String(err)
-    }
-    finally {
-      loading.value = false
-    }
-  },
-  { immediate: true },
-)
 </script>
 
 <style scoped>
