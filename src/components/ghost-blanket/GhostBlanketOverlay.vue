@@ -21,7 +21,7 @@
 <script setup lang="ts">
 import GhostBlanketDiskCleanupList from './GhostBlanketDiskCleanupList.vue'
 
-const props = defineProps<{
+defineProps<{
   modelValue: string | null
   type: string | null
 }>()
