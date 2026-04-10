@@ -69,6 +69,16 @@ impl StorageBoxManager {
             .map_err(|e| format!("反序列化 Storage Box 记录失败: {}", e))
     }
 
+    pub fn save_new_record(
+        &self,
+        file_name: String,
+        content: Value,
+        task_type: String,
+    ) -> Result<(), String> {
+        let record = StorageBoxRecord::new(file_name, content, task_type)?;
+        self.save_record(&record)
+    }
+
     pub fn delete_record(&self, file_name: String) -> Result<(), String> {
         let file_path = self.resolve_file_path(&file_name)?;
 
