@@ -36,11 +36,6 @@ impl AgentRuntime {
     ) -> Self {
         let tools = ToolManager::new("*");
         let history = AgentHistory::new();
-        history
-            .system_prompt
-            .lock()
-            .expect("初始化 Agent system prompt 锁失败")
-            .set_tool_prompt(tools.build_prompt());
 
         Self {
             history,

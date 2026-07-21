@@ -15,7 +15,7 @@ pub fn register() -> ToolDefinition {
     ToolDefinition {
         name: "get_disk_info",
         description: "获取指定路径所在磁盘的总容量、可用空间与已用空间。",
-        usage: "arguments 传 JSON 字符串，例如 {\"path\":\"C:/\"} 或 {\"path\":\"./src\"}",
+        parameters: serde_json::json!({"type":"object","properties":{"path":{"type":"string","description":"需要查询的路径"}},"required":["path"],"additionalProperties":false}),
         handler: call,
     }
 }

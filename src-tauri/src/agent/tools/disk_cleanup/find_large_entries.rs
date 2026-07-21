@@ -18,7 +18,7 @@ pub fn register() -> ToolDefinition {
     ToolDefinition {
         name: "find_large_entries",
         description: "递归扫描指定目录，列出大于指定 MB 阈值的文件和文件夹。",
-        usage: "arguments 传 JSON 字符串，例如 {\"path\":\"C:/Users\",\"min_size_mb\":100}",
+        parameters: serde_json::json!({"type":"object","properties":{"path":{"type":"string","description":"需要扫描的目录绝对路径"},"min_size_mb":{"type":"integer","description":"最小体积阈值，单位 MB"}},"required":["path","min_size_mb"],"additionalProperties":false}),
         handler: call,
     }
 }

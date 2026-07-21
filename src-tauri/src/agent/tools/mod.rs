@@ -3,6 +3,8 @@ mod utility;
 
 use crate::agent::runtime::AgentRuntime;
 use crate::models::event_delegate::EventDelegate;
+use async_openai::types::{ChatCompletionTool, ChatCompletionToolType, FunctionObject};
+use serde_json::Value;
 use std::future::Future;
 use std::pin::Pin;
 
@@ -15,7 +17,7 @@ const ENABLE_ALL_TOOLS: &str = "*";
 pub struct ToolDefinition {
     pub name: &'static str,
     pub description: &'static str,
-    pub usage: &'static str,
+    pub parameters: Value,
     pub handler: ToolHandler,
 }
 
@@ -58,16 +60,19 @@ impl ToolManager {
         Self { tools }
     }
 
-    pub fn build_prompt(&self) -> String {
-        let mut lines = vec!["可用工具如下：".to_string()];
-
-        for tool in &self.tools {
-            lines.push(format!("- 工具名：{}", tool.name));
-            lines.push(format!("  作用：{}", tool.description));
-            lines.push(format!("  用法：{}", tool.usage));
-        }
-
-        lines.join("\n")
+    pub fn api_tools(&self) -> Vec<ChatCompletionTool> {
+        self.tools
+            .iter()
+            .map(|tool| ChatCompletionTool {
+                r#type: ChatCompletionToolType::Function,
+                function: FunctionObject {
+                    name: tool.name.to_string(),
+                    description: Some(tool.description.to_string()),
+                    parameters: Some(tool.parameters.clone()),
+                    strict: None,
+                },
+            })
+            .collect()
     }
 
     pub async fn call(&self, runtime: &AgentRuntime, name: &str, payload: &str) -> Result<String, String> {

@@ -20,7 +20,7 @@ pub fn register() -> ToolDefinition {
     ToolDefinition {
         name: "write_storage_box_checklist",
         description: "在任务收尾阶段使用。把本次磁盘清理整理出的候选清单写入 storage box。清单中每个元素只能包含 path 和 purpose，可同时包含文件夹和单独文件。",
-        usage: "传入 title（本次清理的简短名称，如「下载目录清理」）和 content 数组，例如 {\"title\":\"下载目录清理\",\"content\":[{\"path\":\"C:/Users/19045/Downloads/a.zip\",\"purpose\":\"下载目录中的大文件，可确认后清理\"}]}。不要生成 file_name、saved_at、task_type，这些字段由程序内部自动补齐。",
+        parameters: serde_json::json!({"type":"object","properties":{"title":{"type":"string","description":"本次清理的简短名称"},"content":{"type":"array","items":{"type":"object","properties":{"path":{"type":"string"},"purpose":{"type":"string"}},"required":["path","purpose"],"additionalProperties":false}}},"required":["title","content"],"additionalProperties":false}),
         handler: call,
     }
 }

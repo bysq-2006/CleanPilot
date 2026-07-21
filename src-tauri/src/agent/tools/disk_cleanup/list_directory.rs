@@ -16,7 +16,7 @@ pub fn register() -> ToolDefinition {
     ToolDefinition {
         name: "list_directory",
         description: "查看指定路径下一层文件和文件夹的详细信息，并返回文本结果。注意：该工具不会递归统计文件夹内部数据总大小，文件夹大小字段不是目录内容总占用。",
-        usage: "arguments 传 JSON 字符串，例如 {\"path\":\"D:/test\"} 或 {\"path\":\"./src\"}。",
+        parameters: serde_json::json!({"type":"object","properties":{"path":{"type":"string","description":"需要查看的目录路径"}},"required":["path"],"additionalProperties":false}),
         handler: call,
     }
 }

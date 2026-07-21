@@ -29,6 +29,10 @@ async function handleClose() {
   await appWindow.close()
 }
 
+async function handleMinimize() {
+  await appWindow.minimize()
+}
+
 /// 调试功能：按下 Ctrl + Shift + T 时，在后端打印完整的 agent history
 function handleKeydown(event: KeyboardEvent) {
   if (event.shiftKey && event.ctrlKey && event.key.toLowerCase() === "t") {
@@ -55,6 +59,7 @@ onBeforeUnmount(() => {
     <section class="right-panel">
       <header class="window-titlebar" @mousedown.left="handleStartDragging">
         <div class="window-actions">
+          <button class="action-btn minimize-btn" aria-label="最小化" title="最小化" @mousedown.stop @click="handleMinimize">−</button>
           <button class="action-btn close-btn" @mousedown.stop @click="handleClose">✕</button>
         </div>
       </header>
@@ -153,6 +158,11 @@ body {
 .close-btn:hover {
   background: #e81123;
   color: #ffffff;
+}
+
+.minimize-btn:hover {
+  background: #e8edec;
+  color: #1f2928;
 }
 
 .right-content {

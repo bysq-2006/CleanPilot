@@ -1,15 +1,14 @@
-use crate::agent::context::history::{AgentMessage, AgentToolCall};
-use crate::agent::runtime::{AgentRuntime, AgentStatus};
-use crate::agent::tasks::queue::AgentTask;
-use crate::utils::text_decode::decode_escaped_text;
+use std::collections::BTreeMap;
+
 use futures_util::StreamExt;
 
-/// 处理用户问题任务：先写入 user 消息，再把 LLM 原始输出交给 agent 侧解析器处理。
-pub async fn handle_user_question(runtime: &AgentRuntime, content: String) {
-    println!("Agent 收到用户问题任务: {}", content);
+use crate::agent::context::history::{AgentMessage, AgentToolCall, AgentToolFunction};
+use crate::agent::runtime::{AgentRuntime, AgentStatus};
+use crate::agent::tasks::queue::AgentTask;
 
+pub async fn handle_user_question(runtime: &AgentRuntime, content: String) {
     if let Err(e) = runtime.set_status(AgentStatus::Chatting) {
-        eprintln!("Agent 切换到聊天状态失败: {}", e);
+        eprintln!("Agent 切换到聊天状态失败: {e}");
     }
 
     if let Err(e) = runtime.history.append(AgentMessage {
@@ -19,79 +18,84 @@ pub async fn handle_user_question(runtime: &AgentRuntime, content: String) {
         tool_calls: None,
         tool_call_id: None,
     }) {
-        eprintln!("Agent 写入历史记录失败: {}", e);
+        eprintln!("Agent 写入用户消息失败: {e}");
+        return;
     }
 
-    request_and_enqueue_tasks(
-        runtime,
-        "Agent 已根据用户问题生成任务列表",
-        "Agent 任务入队失败",
-    )
-    .await;
+    request_and_enqueue_tasks(runtime).await;
 }
 
-/// 工具执行后继续请求 LLM。
 pub async fn handle_continue_reply(runtime: &AgentRuntime) {
-    request_and_enqueue_tasks(
-        runtime,
-        "Agent 已根据历史记录生成后续任务列表",
-        "Agent 继续回答任务入队失败",
-    )
-    .await;
+    request_and_enqueue_tasks(runtime).await;
 }
 
-async fn request_and_enqueue_tasks(
-    runtime: &AgentRuntime,
-    success_log: &str,
-    enqueue_error_prefix: &str,
-) {
-    match runtime.llm.chat_stream(&runtime.history).await {
-        Ok(mut stream) => {
-            let mut raw_reply = String::new();
+async fn request_and_enqueue_tasks(runtime: &AgentRuntime) {
+    let tools = match runtime.tools.lock() {
+        Ok(tools) => tools.api_tools(),
+        Err(e) => return fail(runtime, format!("Agent 工具锁获取失败: {e}")),
+    };
+    let mut stream = match runtime.llm.chat_stream(&runtime.history, tools).await {
+        Ok(stream) => stream,
+        Err(e) => return fail(runtime, format!("LLM 调用失败: {e}")),
+    };
 
-            if let Err(e) = append_empty_assistant_message(runtime) {
-                eprintln!("Agent 创建空 Assistant 消息失败: {}", e);
-                return;
-            }
+    if let Err(e) = append_assistant(runtime) {
+        return fail(runtime, e);
+    }
 
-            while let Some(chunk) = stream.next().await {
-                match chunk {
-                    Ok(response) => {
-                        for choice in response.choices {
-                            if let Some(delta) = choice.delta.content {
-                                raw_reply.push_str(&delta);
+    let mut calls = BTreeMap::<i32, AgentToolCall>::new();
+    while let Some(chunk) = stream.next().await {
+        let response = match chunk {
+            Ok(response) => response,
+            Err(e) => return fail(runtime, format!("LLM 流式响应失败: {e}")),
+        };
 
-                                if raw_reply.contains("\"content\"") {
-                                    sync_content_message(runtime, &raw_reply);
-                                }
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("LLM 流式分片处理失败: {}", e);
-                        return;
-                    }
+        for choice in response.choices {
+            let delta = choice.delta;
+            if let Some(content) = delta.content.or(delta.refusal) {
+                if let Err(e) = append_content(runtime, &content) {
+                    return fail(runtime, e);
                 }
             }
 
-            if let Some(tool_calls_raw) = extract_tool_calls(&raw_reply) {
-                process_tool_calls(runtime, &tool_calls_raw, enqueue_error_prefix);
-            } else if let Err(e) = runtime.set_status(AgentStatus::Idle) {
-                eprintln!("Agent 切换到空闲状态失败: {}", e);
+            for chunk in delta.tool_calls.unwrap_or_default() {
+                let call = calls.entry(chunk.index).or_insert_with(|| AgentToolCall {
+                    id: String::new(),
+                    call_type: "function".to_string(),
+                    function: AgentToolFunction {
+                        name: String::new(),
+                        arguments: String::new(),
+                    },
+                });
+                if let Some(id) = chunk.id {
+                    call.id = id;
+                }
+                if let Some(function) = chunk.function {
+                    call.function.name.push_str(&function.name.unwrap_or_default());
+                    call.function.arguments.push_str(&function.arguments.unwrap_or_default());
+                }
             }
-
-            println!("{}: {}", success_log, raw_reply);
-        }
-        Err(e) => {
-            if let Err(status_error) = runtime.set_status(AgentStatus::Idle) {
-                eprintln!("Agent 切换到空闲状态失败: {}", status_error);
-            }
-            eprintln!("LLM 调用失败: {}", e)
         }
     }
+
+    let calls = calls.into_values().collect::<Vec<_>>();
+    if calls.is_empty() {
+        if let Err(e) = runtime.set_status(AgentStatus::Idle) {
+            eprintln!("Agent 切换到空闲状态失败: {e}");
+        }
+        return;
+    }
+
+    if let Err(e) = runtime
+        .history
+        .update_last_message(|message| message.tool_calls = Some(calls.clone()))
+    {
+        return fail(runtime, format!("Agent 保存工具调用失败: {e}"));
+    }
+    enqueue_tool_calls(runtime, calls);
 }
 
-fn append_empty_assistant_message(runtime: &AgentRuntime) -> Result<(), String> {
+fn append_assistant(runtime: &AgentRuntime) -> Result<(), String> {
     runtime.history.append(AgentMessage {
         role: "assistant".to_string(),
         content: Some(String::new()),
@@ -101,99 +105,32 @@ fn append_empty_assistant_message(runtime: &AgentRuntime) -> Result<(), String> 
     })
 }
 
-fn sync_content_message(
-    runtime: &AgentRuntime,
-    raw_reply: &str,
-) {
-    let Some(content_key_index) = raw_reply.find("\"content\"") else {
-        return;
-    };
-
-    let value_area = &raw_reply[content_key_index + "\"content\"".len()..];
-    let value_offset = raw_reply.len() - value_area.len();
-
-    let Some(start_quote_offset) = value_area.find('"') else {
-        return;
-    };
-    let start = value_offset + start_quote_offset + 1;
-
-    let mut escaped = false;
-    let mut end = raw_reply.len();
-    let content_slice = &raw_reply[start..];
-
-    for (offset, ch) in content_slice.char_indices() {
-        if escaped {
-            escaped = false;
-            continue;
-        }
-
-        match ch {
-            '\\' => escaped = true,
-            '"' => {
-                end = start + offset;
-                break;
-            }
-            _ => {}
-        }
-    }
-
-    let decoded = decode_escaped_text(&raw_reply[start..end]);
-    if let Err(e) = runtime.history.update_last_message(|m| {
-        m.content = Some(decoded);
-    }) {
-        eprintln!("Agent 更新最后一条 Assistant 消息失败: {}", e);
-    }
+fn append_content(runtime: &AgentRuntime, delta: &str) -> Result<(), String> {
+    runtime.history.update_last_message(|message| {
+        message
+            .content
+            .get_or_insert_with(String::new)
+            .push_str(delta);
+    })
 }
 
-fn extract_tool_calls(raw_reply: &str) -> Option<String> {
-    let Some(tool_calls_key_index) = raw_reply.find("\"tool_calls\"") else {
-        return None;
-    };
-
-    let suffix = &raw_reply[tool_calls_key_index + "\"tool_calls\"".len()..];
-    let array_start_offset = suffix.find('[')?;
-    let value_start = tool_calls_key_index + "\"tool_calls\"".len() + array_start_offset;
-    let suffix = &raw_reply[value_start..];
-    let end = suffix.rfind(']')?;
-
-    Some(suffix[..=end].to_string())
-}
-
-fn process_tool_calls(runtime: &AgentRuntime, tool_calls_raw: &str, enqueue_error_prefix: &str) {
-    match serde_json::from_str::<Vec<AgentToolCall>>(tool_calls_raw) {
-        Ok(tool_calls) => {
-            if let Err(e) = runtime.history.update_last_message(|message| {
-                message.tool_calls = Some(tool_calls.clone());
-            }) {
-                eprintln!("Agent 更新最后一条 Assistant 的 tool_calls 失败: {}", e);
-            }
-
-            enqueue_tool_calls(runtime, tool_calls, enqueue_error_prefix);
-        }
-        Err(e) => {
-            eprintln!("tool_calls 解析失败: {}\n原始输出: {}", e, tool_calls_raw);
-        }
-    }
-}
-
-fn enqueue_tool_calls(
-    runtime: &AgentRuntime,
-    tool_calls: Vec<AgentToolCall>,
-    enqueue_error_prefix: &str,
-) {
-    for tool_call in tool_calls {
+fn enqueue_tool_calls(runtime: &AgentRuntime, calls: Vec<AgentToolCall>) {
+    for call in calls {
         if let Err(e) = runtime.tasks.push(AgentTask::ToolCall {
-            tool_call_id: tool_call.id,
-            tool_name: tool_call.function.name,
-            payload: tool_call.function.arguments,
+            tool_call_id: call.id,
+            tool_name: call.function.name,
+            payload: call.function.arguments,
         }) {
-            eprintln!("{}: {}", enqueue_error_prefix, e);
-            return;
+            return fail(runtime, format!("Agent 工具任务入队失败: {e}"));
         }
     }
 
     if let Err(e) = runtime.tasks.push(AgentTask::ContinueFromToolResults) {
-                eprintln!("{}: {}", enqueue_error_prefix, e);
+        fail(runtime, format!("Agent 继续回复任务入队失败: {e}"));
     }
 }
 
+fn fail(runtime: &AgentRuntime, error: String) {
+    let _ = runtime.set_status(AgentStatus::Idle);
+    eprintln!("{error}");
+}

@@ -32,7 +32,7 @@ impl AgentScene {
 
     pub fn enabled_tools(&self) -> &'static str {
         match self {
-            Self::DiskCleanup => "list_directory,disk_info,find_large_entries,write_storage_box_checklist,file_read,http_request",
+            Self::DiskCleanup => "list_directory,get_disk_info,find_large_entries,write_storage_box_checklist,file_read,http_request",
         }
     }
 }
@@ -80,14 +80,6 @@ impl AgentSceneManager {
             .set_scene_prompt(scene.scene_prompt().to_string());
 
         let tools = ToolManager::new(scene.enabled_tools());
-        let tool_prompt = tools.build_prompt();
-
-        agent
-            .history
-            .system_prompt
-            .lock()
-            .map_err(|e| format!("Agent system prompt 锁获取失败: {}", e))?
-            .set_tool_prompt(tool_prompt);
 
         let mut current_tools = agent
             .tools

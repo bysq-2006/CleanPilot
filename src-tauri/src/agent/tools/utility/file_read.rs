@@ -17,7 +17,7 @@ pub fn register() -> ToolDefinition {
     ToolDefinition {
         name: "file_read",
         description: "读取指定文件的文本内容，可选限制返回字符数，适合查看配置、日志或代码片段。",
-        usage: "arguments 传 JSON 字符串，例如 {\"path\":\"./README.md\"} 或 {\"path\":\"C:/temp/test.log\",\"max_chars\":4000}。",
+        parameters: serde_json::json!({"type":"object","properties":{"path":{"type":"string","description":"需要读取的文件路径"},"max_chars":{"type":"integer","description":"最多返回的字符数"}},"required":["path"],"additionalProperties":false}),
         handler: call,
     }
 }
