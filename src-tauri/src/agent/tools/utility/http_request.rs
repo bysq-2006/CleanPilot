@@ -1,8 +1,7 @@
 use serde::Deserialize;
 
 use crate::agent::runtime::AgentRuntime;
-use crate::agent::tools::{ToolDefinition, ToolFuture};
-use crate::models::event_delegate::EventDelegate;
+use crate::agent::tools::ToolDefinition;
 
 #[derive(Deserialize)]
 struct HttpRequestArgs {
@@ -16,16 +15,13 @@ pub fn register() -> ToolDefinition {
         name: "http_request",
         description: "使用本机网络发起一个基础 HTTP 请求，适合作为联网能力的保底工具。支持 GET、POST、PUT、DELETE、PATCH。",
         parameters: serde_json::json!({"type":"object","properties":{"method":{"type":"string","enum":["GET","POST","PUT","DELETE","PATCH"]},"url":{"type":"string"},"body":{"type":"string"}},"required":["method","url"],"additionalProperties":false}),
-        handler: call,
     }
 }
 
-fn call(
+pub async fn call(
     _runtime: AgentRuntime,
-    _event_delegate: EventDelegate,
     payload: String,
-) -> ToolFuture {
-    Box::pin(async move {
+) -> Result<String, String> {
         let args: HttpRequestArgs =
             serde_json::from_str(&payload)
                 .map_err(|e| format!("状态码: N/A\n参数解析失败: {}", e))?;
@@ -83,6 +79,5 @@ fn call(
         Ok(format!(
             "请求方法: {}\n最终 URL: {}\n状态码: {}\n响应正文:\n{}",
             method, final_url, status, text
-        ))
-    })
+    ))
 }

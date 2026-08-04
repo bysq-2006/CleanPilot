@@ -3,8 +3,7 @@ use std::path::Path;
 use serde::Deserialize;
 
 use crate::agent::runtime::AgentRuntime;
-use crate::agent::tools::{ToolDefinition, ToolFuture};
-use crate::models::event_delegate::EventDelegate;
+use crate::agent::tools::ToolDefinition;
 
 #[derive(Deserialize)]
 struct DiskInfoArgs {
@@ -16,16 +15,13 @@ pub fn register() -> ToolDefinition {
         name: "get_disk_info",
         description: "获取指定路径所在磁盘的总容量、可用空间与已用空间。",
         parameters: serde_json::json!({"type":"object","properties":{"path":{"type":"string","description":"需要查询的路径"}},"required":["path"],"additionalProperties":false}),
-        handler: call,
     }
 }
 
-fn call(
+pub async fn call(
     _runtime: AgentRuntime,
-    _event_delegate: EventDelegate,
     payload: String,
-) -> ToolFuture {
-    Box::pin(async move {
+) -> Result<String, String> {
         let args: DiskInfoArgs = serde_json::from_str(&payload)
             .map_err(|e| format!("参数解析失败: {}", e))?;
         let path_str = args.path.trim();
@@ -61,8 +57,7 @@ fn call(
             total_space,
             available_space,
             used_space
-        ))
-    })
+    ))
 }
 
 fn normalize_windows_path(path: &str) -> String {

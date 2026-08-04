@@ -2,14 +2,8 @@ mod disk_cleanup;
 mod utility;
 
 use crate::agent::runtime::AgentRuntime;
-use crate::models::event_delegate::EventDelegate;
 use async_openai::types::{ChatCompletionTool, ChatCompletionToolType, FunctionObject};
 use serde_json::Value;
-use std::future::Future;
-use std::pin::Pin;
-
-pub type ToolFuture = Pin<Box<dyn Future<Output = Result<String, String>> + Send>>;
-pub type ToolHandler = fn(AgentRuntime, EventDelegate, String) -> ToolFuture;
 
 const ENABLE_ALL_TOOLS: &str = "*";
 
@@ -18,7 +12,6 @@ pub struct ToolDefinition {
     pub name: &'static str,
     pub description: &'static str,
     pub parameters: Value,
-    pub handler: ToolHandler,
 }
 
 #[derive(Clone)]
@@ -76,12 +69,23 @@ impl ToolManager {
     }
 
     pub async fn call(&self, runtime: &AgentRuntime, name: &str, payload: &str) -> Result<String, String> {
-        let tool = self
-            .tools
-            .iter()
-            .find(|tool| tool.name == name)
-            .ok_or_else(|| format!("未找到工具: {}", name))?;
+        if !self.tools.iter().any(|tool| tool.name == name) {
+            return Err(format!("未找到工具: {}", name));
+        }
 
-        (tool.handler)(runtime.clone(), runtime.event_delegate.clone(), payload.to_string()).await
+        let runtime = runtime.clone();
+        let payload = payload.to_string();
+
+        match name {
+            "list_directory" => disk_cleanup::list_directory::call(runtime, payload).await,
+            "get_disk_info" => disk_cleanup::disk_info::call(runtime, payload).await,
+            "find_large_entries" => disk_cleanup::find_large_entries::call(runtime, payload).await,
+            "write_storage_box_checklist" => {
+                disk_cleanup::write_storage_box_checklist::call(runtime, payload).await
+            }
+            "file_read" => utility::file_read::call(runtime, payload).await,
+            "http_request" => utility::http_request::call(runtime, payload).await,
+            _ => Err(format!("未找到工具: {}", name)),
+        }
     }
 }

@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::agent::runtime::AgentRuntime;
-use crate::agent::tools::{ToolDefinition, ToolFuture};
-use crate::models::event_delegate::EventDelegate;
+use crate::agent::tools::ToolDefinition;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct StorageBoxChecklistItem {
@@ -21,18 +20,13 @@ pub fn register() -> ToolDefinition {
         name: "write_storage_box_checklist",
         description: "在任务收尾阶段使用。把本次磁盘清理整理出的候选清单写入 storage box。清单中每个元素只能包含 path 和 purpose，可同时包含文件夹和单独文件。",
         parameters: serde_json::json!({"type":"object","properties":{"title":{"type":"string","description":"本次清理的简短名称"},"content":{"type":"array","items":{"type":"object","properties":{"path":{"type":"string"},"purpose":{"type":"string"}},"required":["path","purpose"],"additionalProperties":false}}},"required":["title","content"],"additionalProperties":false}),
-        handler: call,
     }
 }
 
-fn call(
+pub async fn call(
     runtime: AgentRuntime,
-    event_delegate: EventDelegate,
     payload: String,
-) -> ToolFuture {
-    Box::pin(async move {
-        let _ = runtime;
-
+) -> Result<String, String> {
         let args: WriteStorageBoxChecklistArgs = serde_json::from_str(&payload)
             .map_err(|e| format!("write_storage_box_checklist 参数解析失败: {}", e))?;
 
@@ -60,12 +54,11 @@ fn call(
             "content": args.content,
         });
 
-        event_delegate
+        runtime.event_delegate
             .sender
             .send(message.to_string())
             .await
             .map_err(|e| format!("发送 storage box 委托消息失败: {}", e))?;
 
-        Ok("storage box 清单写入请求已提交".to_string())
-    })
+    Ok("storage box 清单写入请求已提交".to_string())
 }

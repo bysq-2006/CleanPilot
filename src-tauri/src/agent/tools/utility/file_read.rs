@@ -4,8 +4,7 @@ use std::path::Path;
 use serde::Deserialize;
 
 use crate::agent::runtime::AgentRuntime;
-use crate::agent::tools::{ToolDefinition, ToolFuture};
-use crate::models::event_delegate::EventDelegate;
+use crate::agent::tools::ToolDefinition;
 
 #[derive(Deserialize)]
 struct FileReadArgs {
@@ -18,16 +17,13 @@ pub fn register() -> ToolDefinition {
         name: "file_read",
         description: "读取指定文件的文本内容，可选限制返回字符数，适合查看配置、日志或代码片段。",
         parameters: serde_json::json!({"type":"object","properties":{"path":{"type":"string","description":"需要读取的文件路径"},"max_chars":{"type":"integer","description":"最多返回的字符数"}},"required":["path"],"additionalProperties":false}),
-        handler: call,
     }
 }
 
-fn call(
+pub async fn call(
     _runtime: AgentRuntime,
-    _event_delegate: EventDelegate,
     payload: String,
-) -> ToolFuture {
-    Box::pin(async move {
+) -> Result<String, String> {
         let args: FileReadArgs = serde_json::from_str(&payload)
             .map_err(|e| format!("文件读取失败\n参数解析失败: {}", e))?;
         let path_str = args.path.trim();
@@ -66,6 +62,5 @@ fn call(
             display_content.chars().count(),
             if truncated { "是" } else { "否" },
             display_content
-        ))
-    })
+    ))
 }

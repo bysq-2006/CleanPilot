@@ -5,8 +5,7 @@ use serde::Deserialize;
 use walkdir::WalkDir;
 
 use crate::agent::runtime::AgentRuntime;
-use crate::agent::tools::{ToolDefinition, ToolFuture};
-use crate::models::event_delegate::EventDelegate;
+use crate::agent::tools::ToolDefinition;
 
 #[derive(Deserialize)]
 struct FindLargeEntriesArgs {
@@ -19,16 +18,13 @@ pub fn register() -> ToolDefinition {
         name: "find_large_entries",
         description: "递归扫描指定目录，列出大于指定 MB 阈值的文件和文件夹。",
         parameters: serde_json::json!({"type":"object","properties":{"path":{"type":"string","description":"需要扫描的目录绝对路径"},"min_size_mb":{"type":"integer","description":"最小体积阈值，单位 MB"}},"required":["path","min_size_mb"],"additionalProperties":false}),
-        handler: call,
     }
 }
 
-fn call(
+pub async fn call(
     _runtime: AgentRuntime,
-    _event_delegate: EventDelegate,
     payload: String,
-) -> ToolFuture {
-    Box::pin(async move {
+) -> Result<String, String> {
         let args: FindLargeEntriesArgs =
             serde_json::from_str(&payload).map_err(|e| format!("参数解析失败: {}", e))?;
         let path_str = args.path.trim();
@@ -152,8 +148,7 @@ fn call(
             lines.extend(skipped_paths.into_iter().take(20));
         }
 
-        Ok(lines.join("\n"))
-    })
+    Ok(lines.join("\n"))
 }
 
 fn canonicalize_for_display(path: &Path) -> PathBuf {
