@@ -1,3 +1,4 @@
+<!-- 展示用户发送的聊天消息。 -->
 <template>
   <div
     v-if="displayContent"

@@ -1,3 +1,4 @@
+<!-- 为工具调用结果提供统一的带边框、限高、可滚动容器。 -->
 <template>
   <div class="common-frame-box" :style="boxStyle">
     <slot />

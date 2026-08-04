@@ -1,6 +1,17 @@
 use std::path::Path;
 use std::process::Command;
 
+pub fn move_to_recycle_bin(path: &Path) -> Result<(), String> {
+    if !path.is_absolute() {
+        return Err(format!("只允许回收绝对路径: {}", path.display()));
+    }
+    if !path.exists() {
+        return Err(format!("路径不存在: {}", path.display()));
+    }
+
+    trash::delete(path).map_err(|e| format!("移入回收站失败: {}: {}", path.display(), e))
+}
+
 pub fn reveal_in_file_manager(path: &Path) -> Result<(), String> {
     if !path.exists() {
         return Err(format!("路径不存在: {}", path.display()));

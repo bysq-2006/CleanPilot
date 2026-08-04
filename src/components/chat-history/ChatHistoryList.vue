@@ -1,4 +1,4 @@
-<!-- 这整个vue是一个长页面，没滚动条的，要在外面加 -->
+<!-- 渲染完整聊天消息列表，滚动由外层容器负责。 -->
 <template>
   <div class="history-panel">
     <div class="message-list">

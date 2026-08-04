@@ -1,3 +1,4 @@
+<!-- 根据工具名称选择对应的工具消息组件。 -->
 <template>
   <component :is="selectedComponent" :message="message" />
 </template>

@@ -1,3 +1,4 @@
+<!-- 展示目录列表工具的调用结果。 -->
 <template>
   <div class="list-directory-message">
     <CommonFrameBox max-height="16rem">

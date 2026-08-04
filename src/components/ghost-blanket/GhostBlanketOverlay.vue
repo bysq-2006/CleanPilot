@@ -1,3 +1,4 @@
+<!-- 以遮罩弹层承载 Storage Box 任务详情。 -->
 <template>
   <Transition name="ghost-blanket-pop">
       <div v-if="modelValue" class="ghost-blanket-overlay" @click.self="emit('close')">

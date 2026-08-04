@@ -1,3 +1,4 @@
+<!-- 显示 Agent 当前是否正在处理任务。 -->
 <template>
   <div v-if="isWorking" class="agent-working-indicator" role="status" aria-live="polite">
     <span

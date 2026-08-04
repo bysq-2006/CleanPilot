@@ -1,3 +1,4 @@
+<!-- 兜底展示无法识别类型的聊天消息。 -->
 <template>
   <div
     v-if="displaySegments.length"

@@ -1,3 +1,4 @@
+<!-- 展示大文件和大目录扫描工具的调用结果。 -->
 <template>
   <div class="find-large-entries-message">
     <CommonFrameBox max-height="18rem">

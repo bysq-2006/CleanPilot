@@ -95,17 +95,11 @@ impl StorageBoxManager {
         if file_name.is_empty() {
             return Err("文件名不能为空".to_string());
         }
+        if PathBuf::from(file_name).components().count() != 1 {
+            return Err("Storage Box 记录名不能包含路径".to_string());
+        }
 
         Ok(self.path.join(file_name))
-    }
-
-    pub fn operate_record_file<T>(
-        &self,
-        file_name: &str,
-        operation: impl FnOnce(&std::path::Path) -> Result<T, String>,
-    ) -> Result<T, String> {
-        let file_path = self.resolve_file_path(file_name)?;
-        operation(&file_path)
     }
 
     pub fn save_record(&self, record: &StorageBoxRecord) -> Result<(), String> {

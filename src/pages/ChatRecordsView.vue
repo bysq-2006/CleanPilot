@@ -40,7 +40,6 @@
               tabindex="0"
               @click="handleRestore(record.context_id)"
             >
-              <div class="record-accent" aria-hidden="true"></div>
               <div class="record-content">
                 <div class="record-preview">{{ record.preview }}</div>
                 <div class="record-meta-row">
@@ -350,12 +349,11 @@ onMounted(() => {
 }
 
 .record-section-marker {
-  width: 0.5rem;
-  height: 0.5rem;
+  width: 0.45rem;
+  height: 0.45rem;
   border-radius: 999px;
-  background: linear-gradient(180deg, #1f2a28 0%, #4c8b73 100%);
+  background: #789087;
   flex-shrink: 0;
-  box-shadow: 0 0 0 0.25rem rgba(76, 139, 115, 0.12);
 }
 
 .record-section-title {
@@ -394,14 +392,6 @@ onMounted(() => {
   box-shadow: 0 10px 20px rgba(72, 102, 90, 0.09);
   transform: translateY(-1px);
   outline: none;
-}
-
-.record-accent {
-  width: 0.25rem;
-  align-self: stretch;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #2c6d5a 0%, #9fd3b8 100%);
-  flex-shrink: 0;
 }
 
 .record-content {

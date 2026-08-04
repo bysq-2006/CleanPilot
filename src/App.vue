@@ -59,8 +59,8 @@ onBeforeUnmount(() => {
     <section class="right-panel">
       <header class="window-titlebar" @mousedown.left="handleStartDragging">
         <div class="window-actions">
-          <button class="action-btn minimize-btn" aria-label="最小化" title="最小化" @mousedown.stop @click="handleMinimize">−</button>
-          <button class="action-btn close-btn" @mousedown.stop @click="handleClose">✕</button>
+          <button class="action-btn minimize-btn" aria-label="最小化" title="最小化" @mousedown.stop @click="handleMinimize" />
+          <button class="action-btn close-btn" aria-label="关闭" title="关闭" @mousedown.stop @click="handleClose" />
         </div>
       </header>
 
@@ -129,7 +129,7 @@ body {
   display: flex;
   align-items: center;
   flex-direction: row-reverse;
-  padding: 0 0.625rem 0 0.875rem;
+  padding: 0 0 0 0.875rem;
   user-select: none;
   cursor: grab;
 }
@@ -145,14 +145,38 @@ body {
 }
 
 .action-btn {
-  width: 1.875rem;
-  height: 1.875rem;
+  position: relative;
+  width: 2.75rem;
+  height: 2.5rem;
   border: 0;
-  border-radius: 0.5rem;
+  border-radius: 0;
   background: transparent;
   color: #576160;
-  font-size: 0.875rem;
   cursor: pointer;
+}
+
+.minimize-btn::before,
+.close-btn::before,
+.close-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.75rem;
+  height: 0.09375rem;
+  background: currentColor;
+}
+
+.minimize-btn::before {
+  transform: translate(-50%, -50%);
+}
+
+.close-btn::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.close-btn::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
 }
 
 .close-btn:hover {

@@ -1,3 +1,4 @@
+<!-- 集中展示应用中的全局通知消息。 -->
 <template>
   <div v-if="notices.length" class="notice-list-wrap">
     <transition-group 
@@ -32,7 +33,7 @@ const { notices } = useNoticeCenter()
   transform: translateX(-50%);
   width: min(36rem, calc(100% - 2rem));
   pointer-events: none;
-  z-index: 60;
+  z-index: 1100;
 }
 
 .notice-list {

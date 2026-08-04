@@ -1,3 +1,4 @@
+<!-- 展示磁盘容量查询工具的调用结果。 -->
 <template>
   <div class="disk-info-message">
     <CommonFrameBox max-height="14rem">

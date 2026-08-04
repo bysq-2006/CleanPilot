@@ -35,7 +35,7 @@ const router = useRouter()
 const route = useRoute()
 
 const navItems = [
-  { key: 'new-chat', label: '发起聊天', icon: '/NewChat.svg', to: '/new-chat' },
+  { key: 'new-chat', label: '新建对话', icon: '/NewChat.svg', to: '/new-chat' },
   { key: 'conversation', label: '对话', icon: '/Chat.svg', to: '/' },
   { key: 'chat-records', label: '聊天记录', icon: '/ChatRecords.svg', to: '/chat-records' },
   { key: 'storage-box', label: '任务', icon: '/Task.svg', to: '/storage-box' },

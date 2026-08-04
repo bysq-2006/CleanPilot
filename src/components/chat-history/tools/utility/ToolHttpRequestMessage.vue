@@ -1,3 +1,4 @@
+<!-- 展示 HTTP 请求工具的调用结果。 -->
 <template>
   <div class="http-tool-message">
     <CommonFrameBox max-height="15rem">

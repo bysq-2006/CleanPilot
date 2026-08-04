@@ -1,3 +1,4 @@
+<!-- 兜底展示没有专用组件的工具调用消息。 -->
 <template>
   <div class="tool-fallback-message">
     <CommonFrameBox max-height="16rem">

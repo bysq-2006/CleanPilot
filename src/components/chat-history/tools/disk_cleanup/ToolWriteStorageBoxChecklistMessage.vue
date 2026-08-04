@@ -1,3 +1,4 @@
+<!-- 展示清理清单写入 Storage Box 的工具消息。 -->
 <template>
   <div class="write-checklist-message">
     <div class="checklist-card" :class="{ 'is-error': !isSuccess }">

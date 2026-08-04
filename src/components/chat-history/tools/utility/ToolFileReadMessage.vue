@@ -1,3 +1,4 @@
+<!-- 展示文件读取工具的调用结果。 -->
 <template>
   <div class="file-read-message">
     <CommonFrameBox max-height="18rem">

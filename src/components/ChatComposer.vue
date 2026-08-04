@@ -1,3 +1,4 @@
+<!-- 提供聊天内容输入与发送功能。 -->
 <template>
   <div class="bottom-section">
     <div class="input-row">

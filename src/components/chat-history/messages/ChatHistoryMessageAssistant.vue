@@ -1,3 +1,4 @@
+<!-- 展示 Agent 助手回复消息。 -->
 <template>
   <div
     v-if="displayContent"
