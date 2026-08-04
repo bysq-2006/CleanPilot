@@ -60,7 +60,7 @@ pub fn debug_print_history(app: AppHandle) -> Result<(), String> {
         .history
         .build_llm_input()?;
 
-    println!("Agent 调试输出完整 history: {}", history);
+    log::debug!("Agent 调试输出完整 history: {}", history);
 
     Ok(())
 }

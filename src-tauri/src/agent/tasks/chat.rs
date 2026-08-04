@@ -8,7 +8,7 @@ use crate::agent::tasks::queue::AgentTask;
 
 pub async fn handle_user_question(runtime: &AgentRuntime, content: String) {
     if let Err(e) = runtime.set_status(AgentStatus::Chatting) {
-        eprintln!("Agent 切换到聊天状态失败: {e}");
+        log::error!("Agent 切换到聊天状态失败: {e}");
     }
 
     if let Err(e) = runtime.history.append(AgentMessage {
@@ -18,7 +18,7 @@ pub async fn handle_user_question(runtime: &AgentRuntime, content: String) {
         tool_calls: None,
         tool_call_id: None,
     }) {
-        eprintln!("Agent 写入用户消息失败: {e}");
+        log::error!("Agent 写入用户消息失败: {e}");
         return;
     }
 
@@ -81,7 +81,7 @@ async fn request_and_enqueue_tasks(runtime: &AgentRuntime) {
     let calls = calls.into_values().collect::<Vec<_>>();
     if calls.is_empty() {
         if let Err(e) = runtime.set_status(AgentStatus::Idle) {
-            eprintln!("Agent 切换到空闲状态失败: {e}");
+            log::error!("Agent 切换到空闲状态失败: {e}");
         }
         return;
     }
@@ -132,5 +132,5 @@ fn enqueue_tool_calls(runtime: &AgentRuntime, calls: Vec<AgentToolCall>) {
 
 fn fail(runtime: &AgentRuntime, error: String) {
     let _ = runtime.set_status(AgentStatus::Idle);
-    eprintln!("{error}");
+    log::error!("{error}");
 }

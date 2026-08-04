@@ -64,7 +64,7 @@ impl ManagerModule {
                 let agent_guard = match store.agent.lock() {
                     Ok(agent) => agent,
                     Err(error) => {
-                        eprintln!("Agent 锁获取失败: {}", error);
+                        log::error!("Agent 锁获取失败: {}", error);
                         continue;
                     }
                 };
@@ -76,7 +76,7 @@ impl ManagerModule {
                 let current_status = match agent.status.lock() {
                     Ok(status) => *status,
                     Err(error) => {
-                        eprintln!("Agent 状态锁获取失败: {}", error);
+                        log::error!("Agent 状态锁获取失败: {}", error);
                         continue;
                     }
                 };
@@ -91,13 +91,13 @@ impl ManagerModule {
                     let history = match agent.history.inner.lock() {
                         Ok(history) => history,
                         Err(error) => {
-                            eprintln!("Agent 历史记录加锁失败: {}", error);
+                            log::error!("Agent 历史记录加锁失败: {}", error);
                             continue;
                         }
                     };
 
                     if let Err(error) = manager.history.save_context_items(&history) {
-                        eprintln!("自动保存历史记录失败: {}", error);
+                        log::error!("自动保存历史记录失败: {}", error);
                     }
                 }
             }
@@ -120,7 +120,7 @@ impl ManagerModule {
                 });
 
             if let Err(error) = result {
-                eprintln!("处理工具事件委托消息失败: {}", error);
+                log::error!("处理工具事件委托消息失败: {}", error);
             }
         }
     }

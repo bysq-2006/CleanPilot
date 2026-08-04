@@ -67,7 +67,7 @@ impl AgentRuntime {
     async fn run_loop(self) {
         loop {
             let next_task = self.tasks.pop().unwrap_or_else(|e| {
-                eprintln!("{}", e);
+                log::error!("{}", e);
                 None
             });
 

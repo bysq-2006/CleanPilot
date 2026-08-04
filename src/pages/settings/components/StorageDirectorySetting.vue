@@ -1,11 +1,22 @@
 <template>
-  <div class="settings-item">
-    <div class="settings-item__content">
-      <div class="settings-item__title">存储目录</div>
-      <div class="settings-item__desc">打开应用数据存储目录（配置与状态文件）</div>
+  <div>
+    <div class="settings-item">
+      <div class="settings-item__content">
+        <div class="settings-item__title">存储目录</div>
+        <div class="settings-item__desc">配置、历史记录与任务文件</div>
+      </div>
+
+      <button class="settings-item__action" @click="openDirectory('open_storage_directory', '存储目录')">打开目录</button>
     </div>
 
-    <button class="settings-item__action" @click="openStorageDir">打开目录</button>
+    <div class="settings-item">
+      <div class="settings-item__content">
+        <div class="settings-item__title">日志目录</div>
+        <div class="settings-item__desc">查看、导出或清理应用运行日志</div>
+      </div>
+
+      <button class="settings-item__action" @click="openDirectory('open_log_directory', '日志目录')">打开目录</button>
+    </div>
   </div>
 </template>
 
@@ -13,13 +24,13 @@
 import { invoke } from '@tauri-apps/api/core'
 import { pushNotice } from '../../../composables/useNoticeCenter'
 
-async function openStorageDir() {
+async function openDirectory(command: string, name: string) {
   try {
-    await invoke('open_storage_directory')
-    pushNotice('success', '已打开存储目录')
+    await invoke(command)
+    pushNotice('success', `已打开${name}`)
   } catch (error) {
-    console.error('打开存储目录失败:', error)
-    pushNotice('error', '打开存储目录失败')
+    console.error(`打开${name}失败:`, error)
+    pushNotice('error', `打开${name}失败`)
   }
 }
 </script>
@@ -32,6 +43,10 @@ async function openStorageDir() {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.settings-item + .settings-item {
+  border-top: 0.0625rem solid #e2e7e6;
 }
 
 .settings-item__content {

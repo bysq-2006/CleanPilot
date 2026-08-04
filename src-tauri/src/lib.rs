@@ -11,6 +11,12 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
+            let default_panic_hook = std::panic::take_hook();
+            std::panic::set_hook(Box::new(move |info| {
+                log::error!("应用发生未处理 panic: {info}");
+                default_panic_hook(info);
+            }));
+
             let app_handle = app.handle().clone();
             let store = AppStore::new(&app_handle)?;
             app.manage(store);
@@ -38,6 +44,19 @@ pub fn run() {
 
             Ok(())
         })
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(if cfg!(debug_assertions) {
+                    log::LevelFilter::Debug
+                } else {
+                    log::LevelFilter::Info
+                })
+                .file_open_strategy(tauri_plugin_log::FileOpenStrategy::Rotate)
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(10))
+                .max_file_size(5_000_000)
+                .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             commands::agent::chat,
@@ -58,7 +77,8 @@ pub fn run() {
             commands::agent::debug_print_history,
             commands::settings::set_config::get_config,
             commands::settings::set_config::save_config,
-            commands::settings::storage_dir::open_storage_directory
+            commands::settings::storage_dir::open_storage_directory,
+            commands::settings::storage_dir::open_log_directory
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

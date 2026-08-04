@@ -7,12 +7,12 @@ pub async fn handle_tool_call(
     tool_name: String,
     payload: String,
 ) {
-    println!("Agent 收到工具调用任务: {}, payload={}", tool_name, payload);
+    log::debug!("Agent 收到工具调用任务: {}", tool_name);
 
     let tools = match runtime.tools.lock() {
         Ok(tools) => tools.clone(),
         Err(error) => {
-            eprintln!("Agent 工具锁获取失败: {}", error);
+            log::error!("Agent 工具锁获取失败: {}", error);
             return;
         }
     };
@@ -37,7 +37,7 @@ pub async fn handle_tool_call(
         tool_calls: None,
         tool_call_id: Some(tool_call_id),
     }) {
-        eprintln!("Agent 写入工具结果失败: {}", e);
+        log::error!("Agent 写入工具结果失败: {}", e);
         return;
     }
 }

@@ -2,7 +2,7 @@
   <div class="settings-view">
     <div class="settings-header-block">
       <div class="settings-header">设置</div>
-      <div class="settings-subtitle">统一管理存储目录与模型配置，保持和其他页面一致的浏览体验。</div>
+      <div class="settings-subtitle">统一管理存储目录、运行日志与模型配置。</div>
     </div>
 
     <section class="settings-card">
