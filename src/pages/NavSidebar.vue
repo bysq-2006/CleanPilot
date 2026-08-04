@@ -1,7 +1,7 @@
 <template>
   <div class="nav-sidebar">
     <div class="nav-top-placeholder">
-      <span class="placeholder-dot">•</span>
+      <GitHubLink />
     </div>
 
     <button
@@ -30,6 +30,7 @@
 import { getVersion } from '@tauri-apps/api/app'
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import GitHubLink from '../components/GitHubLink.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -66,12 +67,6 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.placeholder-dot {
-  font-size: 1.25rem;
-  line-height: 1;
-  color: #9da7a6;
 }
 
 .nav-item {
