@@ -31,7 +31,6 @@ impl Config {
         let dir_path = self.config_dir()?;
         let disk_config: Config = load_state_from_disk(&dir_path, "config.json")?;
         self.llm = disk_config.llm;
-        self.llm.migrate_legacy_defaults();
         Ok(())
     }
 

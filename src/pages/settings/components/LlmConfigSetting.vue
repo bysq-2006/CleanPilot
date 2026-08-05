@@ -119,7 +119,11 @@ const isProviderPickerOpen = ref(false)
 const providerSearch = ref('')
 
 const providerNames = computed(() => {
-  return Object.keys(configState.value).filter((key) => key !== 'current_provider')
+  const names = Object.keys(configState.value).filter((key) => key !== 'current_provider')
+  return [
+    ...Object.keys(providerCatalog).filter((key) => names.includes(key)),
+    ...names.filter((key) => !(key in providerCatalog)),
+  ]
 })
 
 const providers = computed<ProviderMeta[]>(() => providerNames.value.map((id) => ({
