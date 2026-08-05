@@ -55,25 +55,6 @@ pub fn get_history(app: AppHandle, start_index: usize) -> Result<Vec<AgentMessag
 }
 
 #[tauri::command]
-/// 将当前 Agent 最终发送给 LLM 的完整输入打印到控制台，便于调试检查。
-pub fn debug_print_history(app: AppHandle) -> Result<(), String> {
-    let store = app.state::<AppStore>();
-    let agent = store
-        .agent
-        .lock()
-        .map_err(|e| format!("Agent 锁获取失败: {}", e))?;
-    let history = agent
-        .as_ref()
-        .ok_or_else(|| "Agent 尚未初始化".to_string())?
-        .history
-        .build_llm_input()?;
-
-    log::debug!("Agent 调试输出完整 history: {}", history);
-
-    Ok(())
-}
-
-#[tauri::command]
 /// 读取当前 Agent 的运行状态，供前端轮询展示工作中提示。
 pub fn get_agent_status(app: AppHandle) -> Result<String, String> {
     let store = app.state::<AppStore>();

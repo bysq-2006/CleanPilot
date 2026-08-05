@@ -3,13 +3,6 @@ use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use tokio_util::sync::CancellationToken;
 
-/// 给 LLM 的最终输入形状固定为 system + context，history 不应输出别的格式。
-#[derive(Debug, Clone, Serialize)]
-struct AgentHistoryLlmInput {
-    system: String,
-    context: Vec<AgentMessage>,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentToolFunction {
     pub name: String,
@@ -99,24 +92,4 @@ impl AgentHistory {
         Ok(())
     }
 
-    /// 唯一正式导出接口：必须返回完整 JSON 字符串，供 LLM 直接消费。
-    pub fn build_llm_input(&self) -> Result<String, String> {
-        let system_prompt = self
-            .system_prompt
-            .lock()
-            .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?
-            .build();
-        let history = self
-            .inner
-            .lock()
-            .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
-
-        let payload = AgentHistoryLlmInput {
-            system: system_prompt,
-            context: history.clone(),
-        };
-
-        serde_json::to_string_pretty(&payload)
-            .map_err(|e| format!("Agent LLM 输入序列化失败: {}", e))
-    }
 }

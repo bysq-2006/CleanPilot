@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { ref } from 'vue'
 import { RouterView } from 'vue-router'
 import GhostBlanketOverlay from './components/ghost-blanket/GhostBlanketOverlay.vue'
 import NoticeList from './components/NoticeList.vue'
@@ -33,21 +32,6 @@ async function handleMinimize() {
   await appWindow.minimize()
 }
 
-/// 调试功能：按下 Ctrl + Shift + T 时，在后端打印完整的 agent history
-function handleKeydown(event: KeyboardEvent) {
-  if (event.shiftKey && event.ctrlKey && event.key.toLowerCase() === "t") {
-      event.preventDefault()
-      void invoke('debug_print_history')
-  }
-}
-
-onMounted(() => {
-  window.addEventListener('keydown', handleKeydown)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleKeydown)
-})
 </script>
 
 <template>

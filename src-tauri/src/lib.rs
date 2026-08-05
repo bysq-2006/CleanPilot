@@ -75,7 +75,6 @@ pub fn run() {
             commands::storage_box::delete_storage_box_record,
             commands::storage_box::reveal_storage_box_path,
             commands::storage_box::recycle_disk_cleanup_item,
-            commands::agent::debug_print_history,
             commands::settings::set_config::get_config,
             commands::settings::set_config::save_config,
             commands::settings::storage_dir::open_storage_directory,
