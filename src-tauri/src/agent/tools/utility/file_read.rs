@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use serde::Deserialize;
+use tokio_util::sync::CancellationToken;
 
 use crate::agent::runtime::AgentRuntime;
 use crate::agent::tools::ToolDefinition;
@@ -23,7 +24,9 @@ pub fn register() -> ToolDefinition {
 pub async fn call(
     _runtime: AgentRuntime,
     payload: String,
+    cancellation_token: CancellationToken,
 ) -> Result<String, String> {
+        if cancellation_token.is_cancelled() { return Err("任务已取消".to_string()); }
         let args: FileReadArgs = serde_json::from_str(&payload)
             .map_err(|e| format!("文件读取失败\n参数解析失败: {}", e))?;
         let path_str = args.path.trim();
@@ -43,6 +46,7 @@ pub async fn call(
 
         let content = fs::read_to_string(path)
             .map_err(|e| format!("文件读取失败\n读取文件内容失败: {}", e))?;
+        if cancellation_token.is_cancelled() { return Err("任务已取消".to_string()); }
         let char_count = content.chars().count();
         let max_chars = args.max_chars.unwrap_or(8000).clamp(1, 50000);
 

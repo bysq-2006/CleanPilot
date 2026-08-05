@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use serde::Deserialize;
+use tokio_util::sync::CancellationToken;
 
 use crate::agent::runtime::AgentRuntime;
 use crate::agent::tools::ToolDefinition;
@@ -21,7 +22,9 @@ pub fn register() -> ToolDefinition {
 pub async fn call(
     _runtime: AgentRuntime,
     payload: String,
+    cancellation_token: CancellationToken,
 ) -> Result<String, String> {
+        if cancellation_token.is_cancelled() { return Err("任务已取消".to_string()); }
         let args: DiskInfoArgs = serde_json::from_str(&payload)
             .map_err(|e| format!("参数解析失败: {}", e))?;
         let path_str = args.path.trim();
@@ -48,6 +51,7 @@ pub async fn call(
         let total_space = disk.total_space();
         let available_space = disk.available_space();
         let used_space = total_space.saturating_sub(available_space);
+        if cancellation_token.is_cancelled() { return Err("任务已取消".to_string()); }
 
         Ok(format!(
             "路径: {}\n挂载点: {}\n文件系统: {}\n总容量: {} 字节\n可用空间: {} 字节\n已用空间: {} 字节",

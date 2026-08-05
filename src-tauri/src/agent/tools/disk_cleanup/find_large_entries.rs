@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 use walkdir::WalkDir;
+use tokio_util::sync::CancellationToken;
 
 use crate::agent::runtime::AgentRuntime;
 use crate::agent::tools::ToolDefinition;
@@ -24,7 +25,9 @@ pub fn register() -> ToolDefinition {
 pub async fn call(
     _runtime: AgentRuntime,
     payload: String,
+    cancellation_token: CancellationToken,
 ) -> Result<String, String> {
+        if cancellation_token.is_cancelled() { return Err("任务已取消".to_string()); }
         let args: FindLargeEntriesArgs =
             serde_json::from_str(&payload).map_err(|e| format!("参数解析失败: {}", e))?;
         let path_str = args.path.trim();
@@ -52,6 +55,7 @@ pub async fn call(
         let mut skipped_paths = Vec::new();
 
         for entry in WalkDir::new(&canonical_root) {
+            if cancellation_token.is_cancelled() { return Err("任务已取消".to_string()); }
             let entry = match entry {
                 Ok(entry) => entry,
                 Err(e) => {
@@ -89,6 +93,7 @@ pub async fn call(
 
                 let mut current = entry_path.parent();
                 while let Some(parent) = current {
+                    if cancellation_token.is_cancelled() { return Err("任务已取消".to_string()); }
                     if !parent.starts_with(&canonical_root) {
                         break;
                     }

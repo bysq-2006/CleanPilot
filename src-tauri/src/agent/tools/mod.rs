@@ -4,6 +4,7 @@ mod utility;
 use crate::agent::runtime::AgentRuntime;
 use async_openai::types::{ChatCompletionTool, ChatCompletionToolType, FunctionObject};
 use serde_json::Value;
+use tokio_util::sync::CancellationToken;
 
 const ENABLE_ALL_TOOLS: &str = "*";
 
@@ -68,7 +69,10 @@ impl ToolManager {
             .collect()
     }
 
-    pub async fn call(&self, runtime: &AgentRuntime, name: &str, payload: &str) -> Result<String, String> {
+    pub async fn call(&self, runtime: &AgentRuntime, name: &str, payload: &str, cancellation_token: &CancellationToken) -> Result<String, String> {
+        if cancellation_token.is_cancelled() {
+            return Err("任务已取消".to_string());
+        }
         if !self.tools.iter().any(|tool| tool.name == name) {
             return Err(format!("未找到工具: {}", name));
         }
@@ -77,14 +81,14 @@ impl ToolManager {
         let payload = payload.to_string();
 
         match name {
-            "list_directory" => disk_cleanup::list_directory::call(runtime, payload).await,
-            "get_disk_info" => disk_cleanup::disk_info::call(runtime, payload).await,
-            "find_large_entries" => disk_cleanup::find_large_entries::call(runtime, payload).await,
+            "list_directory" => disk_cleanup::list_directory::call(runtime, payload, cancellation_token.clone()).await,
+            "get_disk_info" => disk_cleanup::disk_info::call(runtime, payload, cancellation_token.clone()).await,
+            "find_large_entries" => disk_cleanup::find_large_entries::call(runtime, payload, cancellation_token.clone()).await,
             "write_storage_box_checklist" => {
-                disk_cleanup::write_storage_box_checklist::call(runtime, payload).await
+                disk_cleanup::write_storage_box_checklist::call(runtime, payload, cancellation_token.clone()).await
             }
-            "file_read" => utility::file_read::call(runtime, payload).await,
-            "http_request" => utility::http_request::call(runtime, payload).await,
+            "file_read" => utility::file_read::call(runtime, payload, cancellation_token.clone()).await,
+            "http_request" => utility::http_request::call(runtime, payload, cancellation_token.clone()).await,
             _ => Err(format!("未找到工具: {}", name)),
         }
     }

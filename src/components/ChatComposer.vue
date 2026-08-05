@@ -40,11 +40,15 @@
       <button
         type="button"
         class="send-button"
-        aria-label="发送"
-        :disabled="isSending"
-        @click="submitChat"
+        :class="{ 'is-stop': isWorking }"
+        :aria-label="isWorking ? '终止对话' : '发送'"
+        :title="isWorking ? '终止对话' : '发送'"
+        :disabled="isSending || isCancelling"
+        @click="handlePrimaryAction"
       >
+        <span v-if="isWorking" class="stop-icon" aria-hidden="true" />
         <img
+          v-else
           src="/send.svg"
           alt="发送"
           class="send-icon"
@@ -60,13 +64,20 @@ import { invoke } from '@tauri-apps/api/core'
 import { nextTick, onMounted, ref } from 'vue'
 
 import { pushNotice } from '../composables/useNoticeCenter'
+import {
+  startAgentStatusPolling,
+  syncAgentStatus,
+  useAgentStatus,
+} from '../composables/useAgentStatus'
 
 const inputText = ref('')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const isSending = ref(false)
+const isCancelling = ref(false)
 const isModeMenuOpen = ref(false)
 const selectedScene = ref('disk_cleanup')
 const maxTextareaHeightRem = 11.25
+const { isWorking } = useAgentStatus()
 
 const toggleModeMenu = () => {
   isModeMenuOpen.value = !isModeMenuOpen.value
@@ -113,7 +124,7 @@ const resetTextarea = async () => {
 const submitChat = async () => {
   const content = inputText.value.trim()
 
-  if (!content || isSending.value) {
+  if (!content || isSending.value || isWorking.value) {
     return
   }
 
@@ -121,6 +132,7 @@ const submitChat = async () => {
 
   try {
     await invoke('chat', { content })
+    await syncAgentStatus()
     inputText.value = ''
     await resetTextarea()
   }
@@ -133,7 +145,34 @@ const submitChat = async () => {
   }
 }
 
+const cancelChat = async () => {
+  if (isCancelling.value) return
+
+  isCancelling.value = true
+  try {
+    await invoke('cancel_chat')
+    await syncAgentStatus()
+  }
+  catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    pushNotice('error', `终止失败：${message}`)
+  }
+  finally {
+    isCancelling.value = false
+  }
+}
+
+const handlePrimaryAction = () => {
+  if (isWorking.value) {
+    void cancelChat()
+  }
+  else {
+    void submitChat()
+  }
+}
+
 onMounted(() => {
+  startAgentStatusPolling()
   nextTick(() => {
     resizeTextarea()
   })
@@ -307,6 +346,16 @@ onMounted(() => {
   border-color: #cdd8e5;
 }
 
+.send-button.is-stop {
+  border-color: #fecaca;
+  background-color: #fff1f2;
+}
+
+.send-button.is-stop:hover {
+  border-color: #fca5a5;
+  background-color: #ffe4e6;
+}
+
 .send-button:active {
   transform: scale(0.96);
   background-color: #eaf1f8;
@@ -321,6 +370,13 @@ onMounted(() => {
   width: 1.125rem;
   height: 1.125rem;
   display: block;
+}
+
+.stop-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 0.1875rem;
+  background-color: #ef4444;
 }
 
 .main-input:focus {

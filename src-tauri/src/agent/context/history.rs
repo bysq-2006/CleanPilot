@@ -1,6 +1,7 @@
 use super::system_prompt::SystemPromptManager;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
+use tokio_util::sync::CancellationToken;
 
 /// 给 LLM 的最终输入形状固定为 system + context，history 不应输出别的格式。
 #[derive(Debug, Clone, Serialize)]
@@ -53,12 +54,28 @@ impl AgentHistory {
     }
 
     /// 这里只负责追加真实会话消息，不允许把 system prompt 当成普通消息塞进来。
-    pub fn append(&self, message: AgentMessage) -> Result<(), String> {
+    pub fn append_if_active(&self, token: &CancellationToken, message: AgentMessage) -> Result<bool, String> {
         let mut history = self
             .inner
             .lock()
             .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
+        if token.is_cancelled() {
+            return Ok(false);
+        }
         history.push(message);
+        Ok(true)
+    }
+
+    pub fn discard_incomplete_assistant_turn(&self) -> Result<(), String> {
+        let mut history = self
+            .inner
+            .lock()
+            .map_err(|e| format!("Agent 历史记录加锁失败: {}", e))?;
+        let last_user = history.iter().rposition(|message| message.role == "user");
+        let last_assistant = history.iter().rposition(|message| message.role == "assistant");
+        if let Some(index) = last_assistant.filter(|index| Some(*index) > last_user) {
+            history.truncate(index);
+        }
         Ok(())
     }
 

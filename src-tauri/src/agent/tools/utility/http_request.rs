@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use tokio_util::sync::CancellationToken;
 
 use crate::agent::runtime::AgentRuntime;
 use crate::agent::tools::ToolDefinition;
@@ -21,7 +22,9 @@ pub fn register() -> ToolDefinition {
 pub async fn call(
     _runtime: AgentRuntime,
     payload: String,
+    cancellation_token: CancellationToken,
 ) -> Result<String, String> {
+        if cancellation_token.is_cancelled() { return Err("任务已取消".to_string()); }
         let args: HttpRequestArgs =
             serde_json::from_str(&payload)
                 .map_err(|e| format!("状态码: N/A\n参数解析失败: {}", e))?;
@@ -51,23 +54,25 @@ pub async fn call(
             request = request.body(body);
         }
 
-        let response = request
-            .send()
-            .await
-            .map_err(|e| {
+        let response = tokio::select! {
+            _ = cancellation_token.cancelled() => return Err("任务已取消".to_string()),
+            result = request.send() => result.map_err(|e| {
                 let status = e
                     .status()
                     .map(|code| code.to_string())
                     .unwrap_or_else(|| "N/A".to_string());
                 format!("状态码: {}\nHTTP 请求失败: {}", status, e)
-            })?;
+            })?,
+        };
 
         let status = response.status();
         let final_url = response.url().to_string();
-        let text = response
-            .text()
-            .await
-            .map_err(|e| format!("状态码: {}\n读取响应正文失败: {}", status, e))?;
+        let text = tokio::select! {
+            _ = cancellation_token.cancelled() => return Err("任务已取消".to_string()),
+            result = response.text() => {
+                result.map_err(|e| format!("状态码: {}\n读取响应正文失败: {}", status, e))?
+            }
+        };
 
         if !status.is_success() {
             return Err(format!(

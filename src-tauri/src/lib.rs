@@ -60,6 +60,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             commands::agent::chat,
+            commands::agent::cancel_chat,
             commands::agent::get_history,
             commands::agent::get_agent_status,
             commands::manager_context::list_history_records,

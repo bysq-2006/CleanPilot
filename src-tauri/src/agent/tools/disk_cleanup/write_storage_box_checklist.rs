@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tokio_util::sync::CancellationToken;
 
 use crate::agent::runtime::AgentRuntime;
 use crate::agent::tools::ToolDefinition;
@@ -26,7 +27,9 @@ pub fn register() -> ToolDefinition {
 pub async fn call(
     runtime: AgentRuntime,
     payload: String,
+    cancellation_token: CancellationToken,
 ) -> Result<String, String> {
+        if cancellation_token.is_cancelled() { return Err("任务已取消".to_string()); }
         let args: WriteStorageBoxChecklistArgs = serde_json::from_str(&payload)
             .map_err(|e| format!("write_storage_box_checklist 参数解析失败: {}", e))?;
 
@@ -39,6 +42,7 @@ pub async fn call(
         }
 
         for item in &args.content {
+            if cancellation_token.is_cancelled() { return Err("任务已取消".to_string()); }
             if item.path.trim().is_empty() {
                 return Err("write_storage_box_checklist 存在空 path".to_string());
             }
@@ -54,11 +58,12 @@ pub async fn call(
             "content": args.content,
         });
 
-        runtime.event_delegate
-            .sender
-            .send(message.to_string())
-            .await
-            .map_err(|e| format!("发送 storage box 委托消息失败: {}", e))?;
+        tokio::select! {
+            _ = cancellation_token.cancelled() => return Err("任务已取消".to_string()),
+            result = runtime.event_delegate.sender.send(message.to_string()) => {
+                result.map_err(|e| format!("发送 storage box 委托消息失败: {}", e))?;
+            }
+        }
 
     Ok("storage box 清单写入请求已提交".to_string())
 }

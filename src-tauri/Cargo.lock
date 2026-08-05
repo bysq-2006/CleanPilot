@@ -544,6 +544,7 @@ dependencies = [
  "tauri-plugin-log",
  "tauri-plugin-opener",
  "tokio",
+ "tokio-util",
  "trash",
  "uuid",
  "walkdir",
@@ -4679,6 +4680,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-sink",
+ "futures-util",
  "pin-project-lite",
  "tokio",
 ]

@@ -9,33 +9,14 @@
 </template>
 
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
-import { computed, onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 
-const pollIntervalMs = 200
-const status = ref('idle')
+import { startAgentStatusPolling, useAgentStatus } from '../composables/useAgentStatus'
 
-const isWorking = computed(() => status.value === 'chatting')
-
-const syncStatus = async () => {
-  try {
-    status.value = await invoke<string>('get_agent_status')
-  }
-  catch {
-    status.value = 'idle'
-  }
-}
-
-const startPolling = async () => {
-  await syncStatus()
-
-  window.setInterval(() => {
-    void syncStatus()
-  }, pollIntervalMs)
-}
+const { isWorking } = useAgentStatus()
 
 onMounted(() => {
-  void startPolling()
+  startAgentStatusPolling()
 })
 </script>
 

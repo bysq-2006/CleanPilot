@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
+use tokio_util::sync::CancellationToken;
 
 use crate::agent::runtime::AgentRuntime;
 use crate::agent::tools::ToolDefinition;
@@ -22,7 +23,9 @@ pub fn register() -> ToolDefinition {
 pub async fn call(
     _runtime: AgentRuntime,
     payload: String,
+    cancellation_token: CancellationToken,
 ) -> Result<String, String> {
+        if cancellation_token.is_cancelled() { return Err("任务已取消".to_string()); }
         let args: ListDirectoryArgs = serde_json::from_str(&payload)
             .map_err(|e| format!("参数解析失败: {}", e))?;
         let path_str = args.path.trim();
@@ -49,6 +52,7 @@ pub async fn call(
             .map_err(|e| format!("读取目录失败: {}", e))?;
 
         for entry in entries {
+            if cancellation_token.is_cancelled() { return Err("任务已取消".to_string()); }
             let entry = entry.map_err(|e| format!("读取目录项失败: {}", e))?;
             let entry_path = entry.path();
             let display_path = canonicalize_for_display(&entry_path);

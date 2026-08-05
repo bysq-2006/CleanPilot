@@ -2,7 +2,6 @@ use tauri::{AppHandle, Manager};
 
 use crate::agent::context::history::AgentMessage;
 use crate::agent::runtime::AgentStatus;
-use crate::agent::tasks::queue::AgentTask;
 use crate::models::appstore::AppStore;
 
 #[tauri::command]
@@ -18,9 +17,18 @@ pub fn chat(app: AppHandle, content: String) -> Result<(), String> {
         .as_ref()
         .ok_or_else(|| "Agent 尚未初始化".to_string())?;
 
-    agent.tasks.push(AgentTask::UserQuestion { content })?;
+    agent.enqueue_user_question(content)
+}
 
-    Ok(())
+#[tauri::command]
+/// 取消当前 Agent 请求、清空待处理任务并切换回空闲状态。
+pub fn cancel_chat(app: AppHandle) -> Result<(), String> {
+    let store = app.state::<AppStore>();
+    let agent = store.agent.lock()
+        .map_err(|e| format!("Agent 锁获取失败: {}", e))?;
+    agent.as_ref()
+        .ok_or_else(|| "Agent 尚未初始化".to_string())?
+        .cancel_current()
 }
 
 #[tauri::command]
