@@ -131,6 +131,106 @@ impl AgentLlm {
                 )
                 .await
             }
+            LlmProvider::Anthropic => {
+                openai::chat_stream(
+                    history,
+                    &llm_config.anthropic.api_key,
+                    &llm_config.anthropic.base_url,
+                    &llm_config.anthropic.model,
+                    tools,
+                )
+                .await
+            }
+            LlmProvider::Google => {
+                openai::chat_stream(
+                    history,
+                    &llm_config.google.api_key,
+                    &llm_config.google.base_url,
+                    &llm_config.google.model,
+                    tools,
+                )
+                .await
+            }
+            LlmProvider::Xai => {
+                openai::chat_stream(
+                    history,
+                    &llm_config.xai.api_key,
+                    &llm_config.xai.base_url,
+                    &llm_config.xai.model,
+                    tools,
+                )
+                .await
+            }
+            LlmProvider::Mistral => {
+                openai::chat_stream(
+                    history,
+                    &llm_config.mistral.api_key,
+                    &llm_config.mistral.base_url,
+                    &llm_config.mistral.model,
+                    tools,
+                )
+                .await
+            }
+            LlmProvider::Minimax => {
+                openai::chat_stream(
+                    history,
+                    &llm_config.minimax.api_key,
+                    &llm_config.minimax.base_url,
+                    &llm_config.minimax.model,
+                    tools,
+                )
+                .await
+            }
+            LlmProvider::Perplexity => {
+                openai::chat_stream(
+                    history,
+                    &llm_config.perplexity.api_key,
+                    &llm_config.perplexity.base_url,
+                    &llm_config.perplexity.model,
+                    tools,
+                )
+                .await
+            }
+            LlmProvider::Cerebras => {
+                openai::chat_stream(
+                    history,
+                    &llm_config.cerebras.api_key,
+                    &llm_config.cerebras.base_url,
+                    &llm_config.cerebras.model,
+                    tools,
+                )
+                .await
+            }
+            LlmProvider::Nvidia => {
+                openai::chat_stream(
+                    history,
+                    &llm_config.nvidia.api_key,
+                    &llm_config.nvidia.base_url,
+                    &llm_config.nvidia.model,
+                    tools,
+                )
+                .await
+            }
+            LlmProvider::Ollama => {
+                openai::chat_stream(
+                    history,
+                    &llm_config.ollama.api_key,
+                    &llm_config.ollama.base_url,
+                    &llm_config.ollama.model,
+                    tools,
+                )
+                .await
+            }
+            LlmProvider::Custom => {
+                openai::chat_stream(
+                    history,
+                    &llm_config.custom.api_key,
+                    &llm_config.custom.base_url,
+                    &llm_config.custom.model,
+                    tools,
+                )
+                .await
+            }
         }
     }
 }

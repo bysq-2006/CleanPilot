@@ -9,6 +9,7 @@ use crate::agent::runtime::AgentRuntime;
 use crate::agent::tasks::queue::AgentTask;
 
 pub async fn handle_user_question(runtime: &AgentRuntime, content: String, cancellation_token: Arc<CancellationToken>) {
+    log::info!("用户问题: {content}");
     match runtime.history.append_if_active(&cancellation_token, AgentMessage {
         role: "user".to_string(),
         content: Some(content),
@@ -50,6 +51,7 @@ async fn request_and_enqueue_tasks(runtime: &AgentRuntime, cancellation_token: A
     }
 
     let mut calls = BTreeMap::<i32, AgentToolCall>::new();
+    let mut assistant_reply = String::new();
     loop {
         let chunk = tokio::select! {
             _ = cancellation_token.cancelled() => return,
@@ -67,6 +69,7 @@ async fn request_and_enqueue_tasks(runtime: &AgentRuntime, cancellation_token: A
             if cancellation_token.is_cancelled() { return; }
             let delta = choice.delta;
             if let Some(content) = delta.content.or(delta.refusal) {
+                assistant_reply.push_str(&content);
                 if let Err(e) = append_content(runtime, &cancellation_token, &content) {
                     return fail(runtime, &cancellation_token, e);
                 }
@@ -94,6 +97,9 @@ async fn request_and_enqueue_tasks(runtime: &AgentRuntime, cancellation_token: A
     }
 
     if cancellation_token.is_cancelled() { return; }
+    if !assistant_reply.is_empty() {
+        log::info!("AI 原始回复: {assistant_reply}");
+    }
     let calls = calls.into_values().collect::<Vec<_>>();
     if calls.is_empty() {
         if let Err(e) = runtime.finish_if_current(&cancellation_token) {
