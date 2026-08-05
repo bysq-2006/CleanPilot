@@ -1,7 +1,6 @@
 use tauri::{AppHandle, Manager};
 
 use crate::agent::context::history::AgentMessage;
-use crate::agent::runtime::AgentStatus;
 use crate::models::appstore::AppStore;
 
 #[tauri::command]
@@ -26,7 +25,8 @@ pub fn cancel_chat(app: AppHandle) -> Result<(), String> {
     let store = app.state::<AppStore>();
     let agent = store.agent.lock()
         .map_err(|e| format!("Agent 锁获取失败: {}", e))?;
-    agent.as_ref()
+    agent
+        .as_ref()
         .ok_or_else(|| "Agent 尚未初始化".to_string())?
         .cancel_current()
 }
@@ -81,17 +81,10 @@ pub fn get_agent_status(app: AppHandle) -> Result<String, String> {
         .agent
         .lock()
         .map_err(|e| format!("Agent 锁获取失败: {}", e))?;
-    let status = agent
+    let is_chatting = agent
         .as_ref()
         .ok_or_else(|| "Agent 尚未初始化".to_string())?
-        .status
-        .lock()
-        .map_err(|e| format!("Agent 状态锁获取失败: {}", e))?;
+        .is_chatting()?;
 
-    let value = match *status {
-        AgentStatus::Idle => "idle",
-        AgentStatus::Chatting => "chatting",
-    };
-
-    Ok(value.to_string())
+    Ok(if is_chatting { "chatting" } else { "idle" }.to_string())
 }

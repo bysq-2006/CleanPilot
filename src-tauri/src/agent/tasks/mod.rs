@@ -6,6 +6,9 @@ pub mod queue;
 pub mod tool_call;
 
 pub async fn handle_task(runtime: &AgentRuntime, task: AgentTask) {
+    if task.cancellation_token().is_cancelled() {
+        return;
+    }
 
     match task {
         AgentTask::UserQuestion { content, cancellation_token } =>

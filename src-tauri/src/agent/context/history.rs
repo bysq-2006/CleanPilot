@@ -66,7 +66,8 @@ impl AgentHistory {
         Ok(true)
     }
 
-    pub fn discard_incomplete_assistant_turn(&self) -> Result<(), String> {
+    /// 保留已生成的回复文本，并清理未完成的工具调用信息。
+    pub fn preserve_cancelled_assistant_turn(&self) -> Result<(), String> {
         let mut history = self
             .inner
             .lock()
@@ -74,11 +75,18 @@ impl AgentHistory {
         let last_user = history.iter().rposition(|message| message.role == "user");
         let last_assistant = history.iter().rposition(|message| message.role == "assistant");
         if let Some(index) = last_assistant.filter(|index| Some(*index) > last_user) {
-            history.truncate(index);
+            if history[index].tool_calls.is_some() {
+                history.truncate(index + 1);
+                history[index].tool_calls = None;
+                if history[index].content.as_deref().unwrap_or_default().is_empty() {
+                    history.pop();
+                }
+            }
         }
         Ok(())
     }
 
+    /// 使用传入的闭包更新历史记录中的最后一条消息。
     pub fn update_last_message(&self, updater: impl FnOnce(&mut AgentMessage)) -> Result<(), String> {
         let mut history = self
             .inner
@@ -111,5 +119,4 @@ impl AgentHistory {
         serde_json::to_string_pretty(&payload)
             .map_err(|e| format!("Agent LLM 输入序列化失败: {}", e))
     }
-
 }

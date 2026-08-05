@@ -50,3 +50,13 @@ impl AgentTaskQueue {
         Ok(())
     }
 }
+
+impl AgentTask {
+    pub fn cancellation_token(&self) -> &CancellationToken {
+        match self {
+            Self::UserQuestion { cancellation_token, .. }
+            | Self::ContinueFromToolResults { cancellation_token }
+            | Self::ToolCall { cancellation_token, .. } => cancellation_token,
+        }
+    }
+}

@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use super::context::history::AgentHistory;
 use super::llm::AgentLlm;
+use super::state::AgentState;
 use super::tasks;
 use super::tasks::queue::AgentTaskQueue;
 use super::tools::ToolManager;
@@ -14,24 +15,18 @@ use std::sync::{Arc, Mutex};
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AgentStatus {
-    Idle,
-    Chatting,
-}
-
 #[derive(Clone)]
 pub struct AgentRuntime {
     pub history: AgentHistory,
     pub tasks: AgentTaskQueue,
     pub llm: AgentLlm,
     pub tools: Arc<Mutex<ToolManager>>,
-    pub status: Arc<Mutex<AgentStatus>>,
-    pub cancellation_token: Arc<Mutex<Option<Arc<CancellationToken>>>>,
+    state: Arc<Mutex<AgentState>>,
     pub event_delegate: EventDelegate,
 }
 
 impl AgentRuntime {
+    /// 创建 Agent 运行时及其共享组件。
     pub fn new(
         config: Arc<Mutex<Config>>,
         event_delegate: EventDelegate,
@@ -44,68 +39,58 @@ impl AgentRuntime {
             tasks: AgentTaskQueue::default(),
             llm: AgentLlm::new(config),
             tools: Arc::new(Mutex::new(tools)),
-            status: Arc::new(Mutex::new(AgentStatus::Idle)),
-            cancellation_token: Arc::new(Mutex::new(None)),
+            state: Arc::new(Mutex::new(AgentState::Idle)),
             event_delegate,
         }
     }
 
-    pub fn set_status(&self, status: AgentStatus) -> Result<(), String> {
-        let mut current_status = self
-            .status
-            .lock()
-            .map_err(|e| format!("Agent 状态锁获取失败: {}", e))?;
-        *current_status = status;
-        Ok(())
-    }
-
+    /// 创建新请求并把用户问题加入任务队列。
     pub fn enqueue_user_question(&self, content: String) -> Result<(), String> {
-        let mut status = self.status.lock()
+        let mut state = self.state.lock()
             .map_err(|e| format!("Agent 状态锁获取失败: {}", e))?;
-        if *status == AgentStatus::Chatting {
-            return Err("Agent 正在处理上一条消息".to_string());
-        }
-
-        let cancellation_token = Arc::new(CancellationToken::new());
-        self.tasks.push(super::tasks::queue::AgentTask::UserQuestion {
+        let cancellation_token = state.begin()?;
+        if let Err(error) = self.tasks.push(super::tasks::queue::AgentTask::UserQuestion {
             content,
-            cancellation_token: cancellation_token.clone(),
-        })?;
-        *self.cancellation_token.lock()
-            .map_err(|e| format!("Agent 取消令牌锁获取失败: {}", e))? = Some(cancellation_token);
-        *status = AgentStatus::Chatting;
+            cancellation_token,
+        }) {
+            state.cancel();
+            return Err(error);
+        }
         Ok(())
     }
 
+    /// 取消当前请求、清空待处理任务并回滚未完成回复。
     pub fn cancel_current(&self) -> Result<(), String> {
-        let cancelled = if let Some(token) = self.cancellation_token.lock()
-            .map_err(|e| format!("Agent 取消令牌锁获取失败: {}", e))?
-            .take()
-        {
-            token.cancel();
-            true
+        let mut state = self.state.lock()
+            .map_err(|e| format!("Agent 状态锁获取失败: {}", e))?;
+        let cancelled = state.cancel();
+        let clear_result = self.tasks.clear();
+        let history_result = if cancelled {
+            self.history.preserve_cancelled_assistant_turn()
         } else {
-            false
+            Ok(())
         };
 
-        let clear_result = self.tasks.clear();
-        if cancelled {
-            self.history.discard_incomplete_assistant_turn()?;
-        }
-        self.set_status(AgentStatus::Idle)?;
-        clear_result
+        clear_result?;
+        history_result
     }
 
+    /// 将属于当前请求的已完成令牌切换为空闲状态。
     pub fn finish_if_current(&self, token: &Arc<CancellationToken>) -> Result<(), String> {
-        let mut current = self.cancellation_token.lock()
-            .map_err(|e| format!("Agent 取消令牌锁获取失败: {}", e))?;
-        if current.as_ref().is_some_and(|active| Arc::ptr_eq(active, token)) {
-            *current = None;
-            self.set_status(AgentStatus::Idle)?;
-        }
+        let mut state = self.state.lock()
+            .map_err(|e| format!("Agent 状态锁获取失败: {}", e))?;
+        state.finish_if_current(token);
         Ok(())
     }
 
+    /// 读取 Agent 当前是否正在处理请求。
+    pub fn is_chatting(&self) -> Result<bool, String> {
+        let state = self.state.lock()
+            .map_err(|e| format!("Agent 状态锁获取失败: {}", e))?;
+        Ok(state.is_chatting())
+    }
+
+    /// 在 Tauri 异步运行时中启动任务消费循环。
     pub fn start(&self) {
         let runtime = self.clone();
         tauri::async_runtime::spawn(async move {

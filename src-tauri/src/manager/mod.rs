@@ -4,7 +4,6 @@ use std::time::Duration;
 use tauri::{AppHandle, Manager};
 use tokio::time::sleep;
 
-use crate::agent::runtime::AgentStatus;
 use crate::models::appstore::AppStore;
 use crate::models::event_delegate::EventDelegate;
 
@@ -73,32 +72,30 @@ impl ManagerModule {
                     continue;
                 };
 
-                let current_status = match agent.status.lock() {
-                    Ok(status) => *status,
+                let is_chatting = match agent.is_chatting() {
+                    Ok(is_chatting) => is_chatting,
                     Err(error) => {
                         log::error!("Agent 状态锁获取失败: {}", error);
                         continue;
                     }
                 };
 
-                if last_status == Some(current_status) {
+                if last_status == Some(is_chatting) {
                     continue;
                 }
 
-                last_status = Some(current_status);
+                last_status = Some(is_chatting);
 
-                if current_status == AgentStatus::Idle || current_status == AgentStatus::Chatting {
-                    let history = match agent.history.inner.lock() {
-                        Ok(history) => history,
-                        Err(error) => {
-                            log::error!("Agent 历史记录加锁失败: {}", error);
-                            continue;
-                        }
-                    };
-
-                    if let Err(error) = manager.history.save_context_items(&history) {
-                        log::error!("自动保存历史记录失败: {}", error);
+                let history = match agent.history.inner.lock() {
+                    Ok(history) => history,
+                    Err(error) => {
+                        log::error!("Agent 历史记录加锁失败: {}", error);
+                        continue;
                     }
+                };
+
+                if let Err(error) = manager.history.save_context_items(&history) {
+                    log::error!("自动保存历史记录失败: {}", error);
                 }
             }
         });
