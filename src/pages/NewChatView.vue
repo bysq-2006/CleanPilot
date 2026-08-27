@@ -9,7 +9,7 @@
       <div class="entry-copy">今天想处理什么问题？</div>
 
       <div class="entry-input-shell">
-        <textarea ref="textareaRef" v-model="inputText" rows="1" class="entry-textarea" :placeholder="pagePreset.inputPlaceholder"
+        <textarea ref="textareaRef" v-model="inputText" rows="1" class="entry-textarea" :placeholder="selectedSceneOption.inputPlaceholder"
           :disabled="isSubmitting" @input="resizeTextarea" @keydown.enter.exact.prevent="submitEntry" />
 
         <div class="entry-actions">
@@ -21,7 +21,7 @@
           </button>
 
           <div v-if="isModeMenuOpen" class="scene-menu">
-            <button v-for="scene in pagePreset.sceneOptions" :key="scene.value" type="button" class="scene-menu-item"
+            <button v-for="scene in sceneOptions" :key="scene.value" type="button" class="scene-menu-item"
               :class="{ 'is-active': selectedScene === scene.value }" @click="selectMode(scene.value)">
               <img :src="scene.icon" alt="" class="scene-menu-icon" aria-hidden="true" />
               <span class="scene-menu-label">{{ scene.label }}</span>
@@ -35,13 +35,13 @@
       </div>
 
       <div class="quick-actions">
-        <button v-for="prompt in pagePreset.quickPrompts" :key="prompt" type="button" class="quick-action-chip"
+        <button v-for="prompt in selectedSceneOption.quickPrompts" :key="prompt" type="button" class="quick-action-chip"
           :disabled="isSubmitting" @click="applyQuickPrompt(prompt)">
           {{ prompt }}
         </button>
       </div>
 
-      <div class="entry-tip">{{ pagePreset.tip }}</div>
+      <div class="entry-tip">{{ pageTip }}</div>
     </section>
   </div>
 </template>
@@ -58,29 +58,47 @@ type SceneOption = {
   value: string
   label: string
   icon: string
+  inputPlaceholder: string
+  quickPrompts: string[]
 }
 
-const pagePreset: {
-  inputPlaceholder: string
-  tip: string
-  quickPrompts: string[]
-  sceneOptions: SceneOption[]
-} = {
-  inputPlaceholder: '描述你的清理需求，发送后会新建会话并跳转到正式聊天页',
-  tip: '发送后会先创建新的历史上下文，再进入聊天页继续回复。',
-  quickPrompts: [
-    '帮我分析当前磁盘占用最大的目录',
-    '帮我找出可以安全清理的大文件',
-    '先扫描 Downloads 和 Desktop 的占用情况',
-  ],
-  sceneOptions: [
-    {
-      value: 'disk_cleanup',
-      label: '清理模式',
-      icon: '/DiskCleanup.svg',
-    },
-  ],
-}
+const sceneOptions: SceneOption[] = [
+  {
+    value: 'disk_cleanup',
+    label: '清理模式',
+    icon: '/DiskCleanup.svg',
+    inputPlaceholder: '描述你的清理需求，发送后会新建会话并跳转到正式聊天页',
+    quickPrompts: [
+      '帮我分析当前磁盘占用最大的目录',
+      '帮我找出可以安全清理的大文件',
+      '先扫描 Downloads 和 Desktop 的占用情况',
+    ],
+  },
+  {
+    value: 'speed_up',
+    label: '电脑变快',
+    icon: '/SpeedUp.svg',
+    inputPlaceholder: '描述卡顿或变慢的情况，发送后会新建会话并跳转到正式聊天页',
+    quickPrompts: [
+      '帮我看看电脑为什么变卡了',
+      '找出占用资源最多的进程',
+      '检查哪些程序在开机自启动',
+    ],
+  },
+  {
+    value: 'general',
+    label: '全能模式',
+    icon: '/General.svg',
+    inputPlaceholder: '随便问问，磁盘清理、电脑变卡都可以，发送后会新建会话并跳转到正式聊天页',
+    quickPrompts: [
+      '帮我看看 C 盘哪里占用最大',
+      '电脑最近有点卡，帮我分析一下',
+      '先告诉我你现在能帮我做什么',
+    ],
+  },
+]
+
+const pageTip = '发送后会先创建新的历史上下文，再进入聊天页继续回复。'
 
 const router = useRouter()
 const agentHistoryStore = new AgentHistoryStore()
@@ -94,9 +112,10 @@ const minTextareaHeightRem = 3
 const maxTextareaHeightRem = 12
 
 const canSubmit = computed(() => inputText.value.trim().length > 0)
-const selectedSceneLabel = computed(
-  () => pagePreset.sceneOptions.find(scene => scene.value === selectedScene.value)?.label ?? '选择模式',
+const selectedSceneOption = computed(
+  () => sceneOptions.find(scene => scene.value === selectedScene.value) ?? sceneOptions[0],
 )
+const selectedSceneLabel = computed(() => selectedSceneOption.value.label)
 
 const toggleModeMenu = () => {
   isModeMenuOpen.value = !isModeMenuOpen.value

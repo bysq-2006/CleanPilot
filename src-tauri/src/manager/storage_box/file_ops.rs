@@ -17,7 +17,7 @@ pub fn reveal_in_file_manager(path: &Path) -> Result<(), String> {
         return Err(format!("路径不存在: {}", path.display()));
     }
 
-    let status = if path.is_file() {
+    if path.is_file() {
         let canonical_path = path
             .canonicalize()
             .map_err(|e| format!("规范化文件路径失败: {}", e))?;
@@ -25,8 +25,8 @@ pub fn reveal_in_file_manager(path: &Path) -> Result<(), String> {
         Command::new("explorer")
             .arg("/select,")
             .arg(&canonical_path)
-            .status()
-            .map_err(|e| format!("调用资源管理器失败: {}", e))?
+            .spawn()
+            .map_err(|e| format!("调用资源管理器失败: {}", e))?;
     } else {
         let canonical_path = path
             .canonicalize()
@@ -34,12 +34,8 @@ pub fn reveal_in_file_manager(path: &Path) -> Result<(), String> {
 
         Command::new("explorer")
             .arg(&canonical_path)
-            .status()
-            .map_err(|e| format!("调用资源管理器失败: {}", e))?
-    };
-
-    if !status.success() {
-        return Err(format!("资源管理器返回非成功状态: {}", status));
+            .spawn()
+            .map_err(|e| format!("调用资源管理器失败: {}", e))?;
     }
 
     Ok(())

@@ -18,7 +18,7 @@
         :aria-expanded="isModeMenuOpen"
         @click="toggleModeMenu"
       >
-        <span class="mode-label">清理模式</span>
+        <span class="mode-label">{{ selectedSceneLabel }}</span>
         <img
           src="/ChevronDown.svg"
           alt=""
@@ -28,13 +28,20 @@
         />
       </button>
       <div v-if="isModeMenuOpen" class="mode-menu">
-        <button type="button" class="mode-menu-item is-active" @click="selectMode('disk_cleanup')">
-          <img src="/DiskCleanup.svg" alt="清理模式" class="mode-menu-icon" />
+        <button
+          v-for="scene in sceneOptions"
+          :key="scene.value"
+          type="button"
+          class="mode-menu-item"
+          :class="{ 'is-active': selectedScene === scene.value }"
+          @click="selectMode(scene.value)"
+        >
+          <img :src="scene.icon" :alt="scene.label" class="mode-menu-icon" />
           <span class="mode-menu-text-group">
-            <span class="mode-menu-title">清理模式</span>
-            <span class="mode-menu-desc">磁盘清理与空间分析</span>
+            <span class="mode-menu-title">{{ scene.label }}</span>
+            <span class="mode-menu-desc">{{ scene.description }}</span>
           </span>
-          <span class="mode-menu-check">✓</span>
+          <span v-if="selectedScene === scene.value" class="mode-menu-check">✓</span>
         </button>
       </div>
       <button
@@ -61,7 +68,7 @@
 
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
-import { nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 
 import { pushNotice } from '../composables/useNoticeCenter'
 import {
@@ -69,6 +76,34 @@ import {
   syncAgentStatus,
   useAgentStatus,
 } from '../composables/useAgentStatus'
+
+type SceneOption = {
+  value: string
+  label: string
+  icon: string
+  description: string
+}
+
+const sceneOptions: SceneOption[] = [
+  {
+    value: 'disk_cleanup',
+    label: '清理模式',
+    icon: '/DiskCleanup.svg',
+    description: '磁盘清理与空间分析',
+  },
+  {
+    value: 'speed_up',
+    label: '电脑变快',
+    icon: '/SpeedUp.svg',
+    description: '找出卡顿原因，让电脑更快',
+  },
+  {
+    value: 'general',
+    label: '全能模式',
+    icon: '/General.svg',
+    description: '使用全部工具，不限场景',
+  },
+]
 
 const inputText = ref('')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
@@ -78,6 +113,9 @@ const isModeMenuOpen = ref(false)
 const selectedScene = ref('disk_cleanup')
 const maxTextareaHeightRem = 11.25
 const { isWorking } = useAgentStatus()
+const selectedSceneLabel = computed(
+  () => sceneOptions.find(scene => scene.value === selectedScene.value)?.label ?? '选择模式',
+)
 
 const toggleModeMenu = () => {
   isModeMenuOpen.value = !isModeMenuOpen.value

@@ -147,9 +147,7 @@ async function handleRestore(contextId: string) {
 
   agentHistoryStore.reset(record.items)
 
-  if (record.scene === 'disk_cleanup') {
-    await router.push('/')
-  }
+  await router.push('/')
 }
 
 async function handleDelete(contextId: string) {
@@ -160,6 +158,14 @@ async function handleDelete(contextId: string) {
 function formatSceneLabel(scene: string) {
   if (scene === 'disk_cleanup') {
     return '磁盘清理'
+  }
+
+  if (scene === 'speed_up') {
+    return '电脑变快'
+  }
+
+  if (scene === 'general') {
+    return '全能模式'
   }
 
   return '普通会话'

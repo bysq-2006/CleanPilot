@@ -548,6 +548,7 @@ dependencies = [
  "trash",
  "uuid",
  "walkdir",
+ "winreg",
 ]
 
 [[package]]

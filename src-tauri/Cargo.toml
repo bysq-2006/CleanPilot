@@ -33,3 +33,4 @@ sysinfo = "0.30"
 walkdir = "2"
 uuid = { version = "1", features = ["v4"] }
 trash = "5.2"
+winreg = "0.55"

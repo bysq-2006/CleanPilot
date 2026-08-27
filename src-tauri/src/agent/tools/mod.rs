@@ -1,4 +1,5 @@
 mod disk_cleanup;
+mod speed_up;
 mod utility;
 
 use crate::agent::runtime::AgentRuntime;
@@ -31,6 +32,9 @@ impl ToolManager {
             disk_cleanup::write_storage_box_checklist::register(),
             utility::file_read::register(),
             utility::http_request::register(),
+            speed_up::system_perf::register(),
+            speed_up::list_processes::register(),
+            speed_up::list_startup_items::register(),
         ];
         let selection = selection.trim();
 
@@ -89,6 +93,11 @@ impl ToolManager {
             }
             "file_read" => utility::file_read::call(runtime, payload, cancellation_token.clone()).await,
             "http_request" => utility::http_request::call(runtime, payload, cancellation_token.clone()).await,
+            "get_system_perf" => speed_up::system_perf::call(runtime, payload, cancellation_token.clone()).await,
+            "list_processes" => speed_up::list_processes::call(runtime, payload, cancellation_token.clone()).await,
+            "list_startup_items" => {
+                speed_up::list_startup_items::call(runtime, payload, cancellation_token.clone()).await
+            }
             _ => Err(format!("未找到工具: {}", name)),
         }
     }

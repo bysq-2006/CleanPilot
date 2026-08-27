@@ -76,39 +76,26 @@ sequenceDiagram
 
 ## 3. 请求取消机制
 
-每次用户发送问题时，`AgentRuntime` 都会调用 `AgentState::begin()` 创建一个独立的 `CancellationToken`，并进入 `AgentState::Chatting { cancellation_token }`。这个令牌会跟随 `UserQuestion`、该轮产生的所有 `ToolCall` 以及 `ContinueFromToolResults` 一起进入任务队列。令牌只会从“可运行”变为“已取消”，不会被重置；下一轮请求会创建一个全新的令牌。
+取消机制的核心是 `AgentState`：它同时表示 Agent 的运行状态，并持有当前这轮对话的 `CancellationToken`。`Idle` 没有令牌，`Chatting { cancellation_token }` 则表示一轮请求正在执行，因此不会出现“显示正在运行但没有可取消令牌”之类的不一致状态。
 
-LLM 建连、流式回复循环、工具调用前后以及工具内部的目录遍历等长循环都会检查令牌。HTTP 请求和异步消息发送使用 `tokio::select!` 同时等待业务结果与取消通知，因此不必等到网络请求自然结束才响应取消。
+用户发送问题时，`AgentRuntime` 调用 `AgentState::begin()` 创建本轮唯一的令牌，再把同一个令牌共享给 `UserQuestion` 以及随后产生的所有工具和继续回复任务。主动取消时，`AgentState::cancel()` 取消该令牌并回到 `Idle`；正常结束时，`finish_if_current()` 只允许持有当前令牌的任务结束本轮状态。
 
 ```mermaid
-sequenceDiagram
-    actor User as 用户
-    participant UI as ChatComposer
-    participant Command as cancel_chat
-    participant Runtime as AgentRuntime
-    participant Token as CancellationToken
-    participant Queue as AgentTaskQueue
-    participant Worker as 当前 LLM / 工具任务
-    participant History as AgentHistory
+flowchart TD
+    INPUT["用户发送问题"] --> BEGIN["AgentState::begin()<br/>创建本轮唯一 Token"]
+    IDLE["AgentState::Idle<br/>无取消令牌"] --> BEGIN
+    BEGIN --> CHATTING["AgentState::Chatting<br/>{ cancellation_token }"]
 
-    User->>UI: 点击红色方形停止按钮
-    UI->>Command: invoke("cancel_chat")
-    Command->>Runtime: cancel_current()
-    Runtime->>Token: cancel()
-    Runtime->>Queue: clear()
-    Runtime->>History: 保留已生成文本并清理未完成工具调用
-    Runtime->>Runtime: status = Idle
-    Token-->>Worker: cancelled
-    Worker-->>Worker: 退出等待或终止循环
-    UI->>Runtime: 轮询 get_agent_status
-    Runtime-->>UI: idle
-    UI-->>User: 恢复发送按钮
+    CHATTING --> QUESTION["UserQuestion + 同一个 Token"]
+    QUESTION --> TOOL["ToolCall + 同一个 Token"]
+    TOOL --> CONTINUE["ContinueFromToolResults<br/>+ 同一个 Token"]
+
+    CHATTING -->|用户取消| CANCEL["AgentState::cancel()<br/>取消 Token"]
+    CANCEL --> STOP["当前任务感知取消<br/>队列与未完成上下文被清理"]
+    STOP --> IDLE
+
+    CONTINUE -->|本轮正常完成| FINISH["finish_if_current(Token)"]
+    FINISH --> IDLE
 ```
 
-取消时会保留 assistant 已经生成的文本。若已经进入工具调用阶段，则清除未完成的 `tool_calls` 及其后续工具消息，避免下一轮请求携带缺少对应 `tool` 结果的无效消息组合。
-
-前端通过共享的 `useAgentStatus` 状态轮询同时驱动工作提示和发送按钮：状态为 `chatting` 时显示红色方形终止按钮，状态为 `idle` 时显示普通发送按钮。
-
-Runtime 使用一个状态值同时表达运行状态和当前令牌：`Idle` 不包含令牌，`Chatting` 必然包含令牌。这样避免了分别维护 `status` 与 `Option<CancellationToken>` 时可能出现的不一致组合。
-
-`state.rs` 只负责 `AgentState` 自身的开始、取消、完成和状态查询；清空任务队列、整理取消后的历史记录等跨组件操作仍由 `AgentRuntime` 编排。
+各任务只负责传播并检查这枚共享令牌；`AgentRuntime` 负责跨组件收尾，包括清空待执行任务，以及保留已生成文本、移除未完成的工具调用上下文。

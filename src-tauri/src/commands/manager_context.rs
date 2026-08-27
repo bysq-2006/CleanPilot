@@ -36,7 +36,7 @@ pub fn switch_current_scene(app: AppHandle, scene: String) -> Result<(), String>
 }
 
 #[tauri::command]
-/// 创建一个新的会话 UUID 并写入当前历史上下文，同时切换到磁盘清理场景。
+/// 创建一个新的会话 UUID 并写入当前历史上下文，保留用户已选择的场景。
 pub fn create_history_context(app: AppHandle) -> Result<String, String> {
     let store = app.state::<AppStore>();
     let context_id = Uuid::new_v4().to_string();
@@ -56,7 +56,6 @@ pub fn create_history_context(app: AppHandle) -> Result<String, String> {
     history.clear();
     drop(history);
 
-    store.manager.agent_scene.switch_scene(AgentScene::DiskCleanup, agent)?;
     store.manager.history.set_current_context_id(context_id.clone())?;
 
     Ok(context_id)

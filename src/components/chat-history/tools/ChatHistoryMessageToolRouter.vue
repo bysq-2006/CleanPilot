@@ -14,6 +14,9 @@ import ToolListDirectoryMessage from './disk_cleanup/ToolListDirectoryMessage.vu
 import ToolFileReadMessage from './utility/ToolFileReadMessage.vue'
 import ToolHttpRequestMessage from './utility/ToolHttpRequestMessage.vue'
 import ToolWriteStorageBoxChecklistMessage from './disk_cleanup/ToolWriteStorageBoxChecklistMessage.vue'
+import ToolSystemPerfMessage from './speed_up/ToolSystemPerfMessage.vue'
+import ToolListProcessesMessage from './speed_up/ToolListProcessesMessage.vue'
+import ToolListStartupItemsMessage from './speed_up/ToolListStartupItemsMessage.vue'
 
 const props = defineProps<{
   message: AgentMessage
@@ -27,6 +30,9 @@ const toolComponentMap: Record<string, unknown> = {
   get_disk_info: ToolDiskInfoMessage,
   list_directory: ToolListDirectoryMessage,
   write_storage_box_checklist: ToolWriteStorageBoxChecklistMessage,
+  get_system_perf: ToolSystemPerfMessage,
+  list_processes: ToolListProcessesMessage,
+  list_startup_items: ToolListStartupItemsMessage,
 }
 
 const selectedComponent = computed(() => {
