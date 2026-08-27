@@ -12,6 +12,10 @@
             v-if="type === 'disk_cleanup'"
             :record-path="modelValue!"
           />
+          <GhostBlanketSpeedUpList
+            v-else-if="type === 'speed_up'"
+            :record-path="modelValue!"
+          />
           <div v-else class="ghost-blanket-placeholder">暂不支持该类型的渲染</div>
         </div>
       </div>
@@ -21,6 +25,7 @@
 
 <script setup lang="ts">
 import GhostBlanketDiskCleanupList from './GhostBlanketDiskCleanupList.vue'
+import GhostBlanketSpeedUpList from './GhostBlanketSpeedUpList.vue'
 
 defineProps<{
   modelValue: string | null

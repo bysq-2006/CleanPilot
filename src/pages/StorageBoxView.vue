@@ -69,9 +69,15 @@ const emit = defineEmits<{
 }>()
 
 // 卡片展示格式化
-const taskTheme = (taskType: string) => taskType === 'disk_cleanup'
-  ? { label: '清理', theme: 'cleanup' }
-  : { label: taskType || '任务', theme: 'default' }
+const taskTheme = (taskType: string) => {
+  if (taskType === 'disk_cleanup') {
+    return { label: '清理', theme: 'cleanup' }
+  }
+  if (taskType === 'speed_up') {
+    return { label: '变快', theme: 'speedup' }
+  }
+  return { label: taskType || '任务', theme: 'default' }
+}
 
 const formatDisplayName = (fileName: string) => fileName
   .replace(/\.json$/i, '')
@@ -267,6 +273,10 @@ onMounted(() => {
   background: linear-gradient(180deg, rgba(244, 247, 249, 0.96) 0%, #ffffff 72%);
 }
 
+.storage-box-card-speedup {
+  background: linear-gradient(180deg, rgba(255, 248, 237, 0.96) 0%, #ffffff 72%);
+}
+
 .storage-box-card-top {
   display: flex;
   align-items: center;
@@ -289,6 +299,11 @@ onMounted(() => {
 .storage-box-card-default .storage-box-task-badge {
   background: rgba(83, 108, 129, 0.12);
   color: #4f6477;
+}
+
+.storage-box-card-speedup .storage-box-task-badge {
+  background: rgba(217, 119, 6, 0.12);
+  color: #b45309;
 }
 
 .storage-box-delete-button {

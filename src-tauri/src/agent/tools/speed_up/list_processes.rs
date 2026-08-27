@@ -84,10 +84,10 @@ pub async fn call(
                 memory: process.memory(),
                 disk_read: disk.read_bytes,
                 disk_write: disk.written_bytes,
-                category: process_category(name),
+                category: crate::utils::process_live::process_category(name),
                 path: process
                     .exe()
-                    .map(|path| super::normalize_windows_path(&path.display().to_string()))
+                    .map(|path| crate::utils::process_live::normalize_windows_path(&path.display().to_string()))
                     .unwrap_or_else(|| "未知".to_string()),
             })
         })
@@ -138,55 +138,4 @@ pub async fn call(
     }
 
     Ok(lines.join("\n"))
-}
-
-fn process_category(name: &str) -> &'static str {
-    let lower = name.to_ascii_lowercase();
-    let stem = lower.trim_end_matches(".exe");
-
-    const CRITICAL: &[&str] = &[
-        "system",
-        "registry",
-        "smss",
-        "csrss",
-        "wininit",
-        "services",
-        "lsass",
-        "svchost",
-        "winlogon",
-        "dwm",
-        "secure system",
-        "memory compression",
-        "idle",
-        "system idle process",
-        "fontdrvhost",
-        "lsaiso",
-        "conhost",
-        "sihost",
-        "runtimebroker",
-        "searchhost",
-        "shellexperiencehost",
-        "textinputhost",
-        "ctfmon",
-        "taskhostw",
-        "dllhost",
-        "explorer",
-    ];
-    const SECURITY: &[&str] = &[
-        "msmpeng",
-        "nissrv",
-        "securityhealthservice",
-        "securityhealthsystray",
-        "smartscreen",
-        "mpdefendercoreservice",
-        "securityhealthhost",
-    ];
-
-    if CRITICAL.iter().any(|item| stem == *item) {
-        "系统关键"
-    } else if SECURITY.iter().any(|item| stem == *item) {
-        "安全软件"
-    } else {
-        "普通"
-    }
 }

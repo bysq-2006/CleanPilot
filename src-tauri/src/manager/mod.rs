@@ -111,6 +111,7 @@ impl ManagerModule {
                 .and_then(|payload| {
                     match payload.get("event").and_then(|v| v.as_str()) {
                         Some("write_storage_box_checklist") => self.on_write_storage_box_checklist(&payload),
+                        Some("write_speed_up_checklist") => self.on_write_speed_up_checklist(&payload),
                         Some(name) => Err(format!("未知事件委托类型: {}", name)),
                         None => Err("事件委托消息缺少 event 字段".to_string()),
                     }
@@ -145,6 +146,40 @@ impl ManagerModule {
             format!("{}-{}.json", title, timestamp),
             serde_json::Value::Array(content),
             "disk_cleanup".to_string(),
+        )
+    }
+
+    fn on_write_speed_up_checklist(&self, payload: &serde_json::Value) -> Result<(), String> {
+        let title = payload
+            .get("title")
+            .and_then(|v| v.as_str())
+            .filter(|s| !s.trim().is_empty())
+            .ok_or_else(|| "write_speed_up_checklist title 缺失或为空".to_string())?;
+
+        let processes = payload.get("processes").cloned().unwrap_or(serde_json::json!([]));
+        let startup_items = payload
+            .get("startup_items")
+            .cloned()
+            .unwrap_or(serde_json::json!([]));
+
+        if processes.as_array().map(|items| items.is_empty()).unwrap_or(true)
+            && startup_items.as_array().map(|items| items.is_empty()).unwrap_or(true)
+        {
+            return Err("write_speed_up_checklist 内容为空".to_string());
+        }
+
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+
+        self.storage_box.save_new_record(
+            format!("{}-{}.json", title, timestamp),
+            serde_json::json!({
+                "processes": processes,
+                "startup_items": startup_items,
+            }),
+            "speed_up".to_string(),
         )
     }
 }

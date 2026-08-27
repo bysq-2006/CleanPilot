@@ -35,6 +35,7 @@ impl ToolManager {
             speed_up::system_perf::register(),
             speed_up::list_processes::register(),
             speed_up::list_startup_items::register(),
+            speed_up::write_speed_up_checklist::register(),
         ];
         let selection = selection.trim();
 
@@ -97,6 +98,9 @@ impl ToolManager {
             "list_processes" => speed_up::list_processes::call(runtime, payload, cancellation_token.clone()).await,
             "list_startup_items" => {
                 speed_up::list_startup_items::call(runtime, payload, cancellation_token.clone()).await
+            }
+            "write_speed_up_checklist" => {
+                speed_up::write_speed_up_checklist::call(runtime, payload, cancellation_token.clone()).await
             }
             _ => Err(format!("未找到工具: {}", name)),
         }

@@ -1,6 +1,7 @@
 pub mod list_processes;
 pub mod list_startup_items;
 pub mod system_perf;
+pub mod write_speed_up_checklist;
 
 use tokio_util::sync::CancellationToken;
 

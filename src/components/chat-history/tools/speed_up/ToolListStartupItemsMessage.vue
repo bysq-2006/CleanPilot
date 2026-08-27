@@ -63,7 +63,7 @@ const items = computed<StartupRow[]>(() => {
   return displayContent.value
     .split('\n')
     .map((line) => {
-      const matched = line.match(/^- 名称: (.+?) \| 状态: (.+?) \| 来源: (.+?) \| 命令: (.+)$/)
+      const matched = line.match(/^- 名称: (.+?) \| 状态: (.+?) \| (?:位置: .+? \| )?来源: (.+?) \| 命令: (.+)$/)
       if (!matched) return null
       return {
         name: matched[1],
