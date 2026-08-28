@@ -60,10 +60,10 @@ pub async fn call(
 
         tokio::select! {
             _ = cancellation_token.cancelled() => return Err("任务已取消".to_string()),
-            result = runtime.event_delegate.sender.send(message.to_string()) => {
-                result.map_err(|e| format!("发送 storage box 委托消息失败: {}", e))?;
+            result = runtime.event_delegate.request(message.to_string()) => {
+                result.map_err(|e| format!("写入 storage box 失败: {}", e))?;
             }
         }
 
-    Ok("storage box 清单写入请求已提交".to_string())
+    Ok("清理清单已保存到任务".to_string())
 }

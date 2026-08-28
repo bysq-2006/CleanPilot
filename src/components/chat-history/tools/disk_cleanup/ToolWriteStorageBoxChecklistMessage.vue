@@ -25,10 +25,13 @@
           </div>
         </div>
 
-        <div v-else class="empty-hint">未能解析清单内容</div>
+        <div v-else class="empty-hint">{{ isSuccess ? '未能解析清单内容' : (errorText || '写入失败') }}</div>
 
-        <div v-if="items.length" class="card-footer">
+        <div v-if="items.length && isSuccess" class="card-footer">
           <span class="footer-text">共 {{ items.length }} 项已归档到 Storage Box</span>
+        </div>
+        <div v-else-if="errorText" class="card-footer">
+          <span class="footer-text error-text">{{ errorText }}</span>
         </div>
       </div>
     </div>
@@ -53,8 +56,13 @@ const displayContent = computed(() => (props.message.content ?? '').trim())
 
 const isSuccess = computed(() => displayContent.value.startsWith('工具调用结果'))
 
+const errorText = computed(() => {
+  const matched = displayContent.value.match(/错误:\s*(.+)$/m)
+  return matched?.[1]?.trim() ?? ''
+})
+
 const parsedArgs = computed<{ title: string; content: ChecklistItem[] } | null>(() => {
-  const matched = displayContent.value.match(/参数:\s*(\{[\s\S]*?\})\n输出:/)
+  const matched = displayContent.value.match(/参数:\s*(\{[\s\S]*?\})\n(?:输出|错误):/)
   if (!matched) return null
 
   try {
@@ -195,6 +203,10 @@ const items = computed<ChecklistItem[]>(() => parsedArgs.value?.content ?? [])
   font-size: 0.6875rem;
   color: #94a3b8;
   letter-spacing: 0.01em;
+}
+
+.error-text {
+  color: #b91c1c;
 }
 
 .empty-hint {

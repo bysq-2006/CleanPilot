@@ -75,6 +75,7 @@ impl StorageBoxManager {
         content: Value,
         task_type: String,
     ) -> Result<(), String> {
+        let file_name = sanitize_record_file_name(&file_name)?;
         let record = StorageBoxRecord::new(file_name, content, task_type)?;
         self.save_record(&record)
     }
@@ -147,5 +148,89 @@ impl StorageBoxManager {
         });
 
         Ok(records)
+    }
+}
+
+fn is_illegal_file_name_char(c: char) -> bool {
+    matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') || c.is_control()
+}
+
+/// 把 LLM 给的 title 收成可落盘的单层文件名，避免 `/`、`:` 等被当成路径。
+fn sanitize_record_file_name(file_name: &str) -> Result<String, String> {
+    let file_name = file_name.trim();
+    if file_name.is_empty() {
+        return Err("文件名不能为空".to_string());
+    }
+
+    let mut sanitized = String::with_capacity(file_name.len());
+    let mut last_was_underscore = false;
+    for c in file_name.chars() {
+        if is_illegal_file_name_char(c) {
+            if !last_was_underscore {
+                sanitized.push('_');
+                last_was_underscore = true;
+            }
+        } else {
+            sanitized.push(c);
+            last_was_underscore = false;
+        }
+    }
+
+    let mut sanitized = sanitized
+        .trim_matches(|c: char| c == '_' || c == '.' || c.is_whitespace())
+        .to_string();
+
+    if sanitized.is_empty() {
+        sanitized = "任务清单.json".to_string();
+    }
+
+    const MAX_CHARS: usize = 180;
+    if sanitized.chars().count() > MAX_CHARS {
+        let keep_json = file_name.ends_with(".json");
+        let take = if keep_json { MAX_CHARS.saturating_sub(5) } else { MAX_CHARS };
+        let stem: String = sanitized
+            .strip_suffix(".json")
+            .unwrap_or(&sanitized)
+            .chars()
+            .take(take)
+            .collect();
+        let stem = stem.trim_end_matches(|c: char| c == '_' || c == '.' || c.is_whitespace());
+        sanitized = if keep_json {
+            format!("{}.json", stem)
+        } else {
+            stem.to_string()
+        };
+    }
+
+    if sanitized.is_empty() || PathBuf::from(&sanitized).components().count() != 1 {
+        return Err("Storage Box 记录名不能包含路径".to_string());
+    }
+
+    Ok(sanitized)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sanitize_record_file_name;
+    use std::path::PathBuf;
+
+    #[test]
+    fn sanitizes_slashes_in_title() {
+        let name = sanitize_record_file_name("C盘激进清理候选（缓存/临时/可重装项）-1787896528.json")
+            .expect("sanitize");
+        assert_eq!(name, "C盘激进清理候选（缓存_临时_可重装项）-1787896528.json");
+        assert_eq!(PathBuf::from(&name).components().count(), 1);
+    }
+
+    #[test]
+    fn sanitizes_windows_drive_prefix() {
+        let name = sanitize_record_file_name("C:清理-1.json").expect("sanitize");
+        assert_eq!(name, "C_清理-1.json");
+        assert_eq!(PathBuf::from(&name).components().count(), 1);
+    }
+
+    #[test]
+    fn rejects_empty_name() {
+        assert!(sanitize_record_file_name("   ").is_err());
     }
 }

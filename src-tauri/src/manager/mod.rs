@@ -5,7 +5,7 @@ use tauri::{AppHandle, Manager};
 use tokio::time::sleep;
 
 use crate::models::appstore::AppStore;
-use crate::models::event_delegate::EventDelegate;
+use crate::models::event_delegate::{EventDelegate, EventDelegateRequest};
 
 pub mod agent_scene;
 pub mod history;
@@ -103,10 +103,10 @@ impl ManagerModule {
 
     async fn run_event_delegate_listener(
         self,
-        mut receiver: tokio::sync::mpsc::Receiver<String>,
+        mut receiver: tokio::sync::mpsc::Receiver<EventDelegateRequest>,
     ) {
-        while let Some(message) = receiver.recv().await {
-            let result = serde_json::from_str::<serde_json::Value>(&message)
+        while let Some(request) = receiver.recv().await {
+            let result = serde_json::from_str::<serde_json::Value>(&request.payload)
                 .map_err(|e| format!("事件委托消息解析失败: {}", e))
                 .and_then(|payload| {
                     match payload.get("event").and_then(|v| v.as_str()) {
@@ -117,8 +117,12 @@ impl ManagerModule {
                     }
                 });
 
-            if let Err(error) = result {
+            if let Err(error) = &result {
                 log::error!("处理工具事件委托消息失败: {}", error);
+            }
+
+            if request.reply.send(result).is_err() {
+                log::error!("回传事件委托处理结果失败");
             }
         }
     }

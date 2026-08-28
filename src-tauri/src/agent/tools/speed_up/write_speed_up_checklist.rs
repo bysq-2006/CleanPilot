@@ -126,10 +126,10 @@ pub async fn call(
 
     tokio::select! {
         _ = cancellation_token.cancelled() => return Err("任务已取消".to_string()),
-        result = runtime.event_delegate.sender.send(message.to_string()) => {
-            result.map_err(|e| format!("发送 speed up 清单委托消息失败: {}", e))?;
+        result = runtime.event_delegate.request(message.to_string()) => {
+            result.map_err(|e| format!("写入加速建议失败: {}", e))?;
         }
     }
 
-    Ok("加速建议已提交到任务".to_string())
+    Ok("加速建议已保存到任务".to_string())
 }
